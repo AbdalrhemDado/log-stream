@@ -508,6 +508,70 @@ describe("migration startup lifecycle", () => {
     expect(startRuntime).not.toHaveBeenCalled();
   });
 
+  it("keeps the owner connection open through post-migration initialization", async () => {
+    const { clock } = createClock();
+    const database = new RecordingDatabase();
+    const events: string[] = [];
+    let connected = false;
+
+    await runMigrationsWithOwnerRetry({
+      createConnection: () => ({
+        connect: () => {
+          connected = true;
+          events.push("connect");
+          return Promise.resolve();
+        },
+        end: () => {
+          connected = false;
+          events.push("close");
+          return Promise.resolve();
+        },
+        query: (sql, parameters) => database.query(sql, parameters),
+      }),
+      loadMigrations: () => Promise.resolve([]),
+      timeoutMs: 100,
+      retryDelayMs: 10,
+      clock,
+      afterMigrations: async ({ database: ownerDatabase }) => {
+        expect(connected).toBe(true);
+        await ownerDatabase.query("SELECT 1");
+        events.push("prepare");
+      },
+    });
+
+    expect(events).toEqual(["connect", "prepare", "close"]);
+    expect(connected).toBe(false);
+  });
+
+  it("does not start runtime resources after partition preparation failure", async () => {
+    const { clock } = createClock();
+    const database = new RecordingDatabase();
+    const end = vi.fn(() => Promise.resolve());
+    const startRuntime = vi.fn(() => Promise.resolve("started"));
+
+    await expect(
+      migrateBeforeRuntime(
+        () =>
+          runMigrationsWithOwnerRetry({
+            createConnection: () => ({
+              connect: () => Promise.resolve(),
+              end,
+              query: (sql, parameters) => database.query(sql, parameters),
+            }),
+            loadMigrations: () => Promise.resolve([]),
+            timeoutMs: 100,
+            retryDelayMs: 10,
+            clock,
+            afterMigrations: () => Promise.reject(new Error("partition failure")),
+          }),
+        startRuntime,
+      ),
+    ).rejects.toBeInstanceOf(MigrationConnectionError);
+
+    expect(end).toHaveBeenCalledOnce();
+    expect(startRuntime).not.toHaveBeenCalled();
+  });
+
   it("does not start runtime resources after migration failure", async () => {
     const startRuntime = vi.fn(() => Promise.resolve("started"));
 

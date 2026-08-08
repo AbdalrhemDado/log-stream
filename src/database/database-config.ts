@@ -6,6 +6,7 @@ const DEFAULT_POOL_MAX = 4;
 const DEFAULT_CONNECTION_TIMEOUT_MS = 2_000;
 const DEFAULT_STARTUP_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRY_DELAY_MS = 500;
+const DEFAULT_RETENTION_DAYS = 30;
 
 export interface DatabaseConfig {
   readonly connectionString: string;
@@ -14,6 +15,7 @@ export interface DatabaseConfig {
   readonly connectionTimeoutMs: number;
   readonly startupTimeoutMs: number;
   readonly retryDelayMs: number;
+  readonly retentionDays: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -114,5 +116,11 @@ export function loadDatabaseConfig(environment: unknown): DatabaseConfig {
     ),
     startupTimeoutMs,
     retryDelayMs,
+    retentionDays: parseBoundedInteger(
+      environment["RETENTION_DAYS"],
+      "RETENTION_DAYS",
+      DEFAULT_RETENTION_DAYS,
+      3_650,
+    ),
   };
 }

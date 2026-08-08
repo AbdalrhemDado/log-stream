@@ -13,6 +13,7 @@
     "build": "tsc --project tsconfig.build.json",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
+    "schema:inspect": "node dist/database/schema-inspection.js",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" vitest.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

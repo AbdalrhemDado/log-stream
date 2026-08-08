@@ -78,6 +78,14 @@ export interface RunMigrationsWithOwnerRetryOptions {
   readonly timeoutMs: number;
   readonly retryDelayMs: number;
   readonly clock?: MigrationClock;
+  readonly afterMigrations?: (context: OwnerInitializationContext) => Promise<void>;
+}
+
+export interface OwnerInitializationContext {
+  readonly database: MigrationDatabase;
+  readonly deadline: number;
+  readonly retryDelayMs: number;
+  readonly clock: MigrationClock;
 }
 
 const systemClock: MigrationClock = {
@@ -433,6 +441,12 @@ export async function runMigrationsWithOwnerRetry(
           retryDelayMs: options.retryDelayMs,
           clock,
         },
+      });
+      await options.afterMigrations?.({
+        database: connection,
+        deadline,
+        retryDelayMs: options.retryDelayMs,
+        clock,
       });
     } catch (error: unknown) {
       primaryError = error instanceof MigrationError ? error : new MigrationConnectionError();

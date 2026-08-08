@@ -102,12 +102,12 @@ describe.skipIf(!hasPostgresEnvironment)("migration runner with PostgreSQL", () 
     });
   });
 
-  it("applies migration 0001 and records its exact identity and checksum", async () => {
+  it("applies every production migration and records exact identities and checksums", async () => {
     const result = await applyProductionMigrations();
-    const [expected] = await loadMigrations(migrationsDirectory);
+    const expected = await loadMigrations(migrationsDirectory);
     const ownerUrl = databaseUrl(ownerBaseUrl ?? "", databaseName);
 
-    expect(result).toEqual({ appliedVersions: [1] });
+    expect(result).toEqual({ appliedVersions: [1, 2] });
     await withClient(ownerUrl, async (owner) => {
       const history = await owner.query<{
         version: number;
@@ -117,17 +117,17 @@ describe.skipIf(!hasPostgresEnvironment)("migration runner with PostgreSQL", () 
       }>(
         "SELECT version, filename, checksum, applied_at FROM logstream_migrations.schema_migrations",
       );
-      expect(history.rows).toHaveLength(1);
-      expect(history.rows[0]).toMatchObject({
-        version: expected?.version,
-        filename: expected?.filename,
-        checksum: expected?.checksum,
-      });
-      expect(history.rows[0]?.applied_at).toBeInstanceOf(Date);
+      expect(history.rows).toHaveLength(2);
+      expect(
+        history.rows.map(({ version, filename, checksum }) => ({ version, filename, checksum })),
+      ).toEqual(
+        expected.map(({ version, filename, checksum }) => ({ version, filename, checksum })),
+      );
+      expect(history.rows.every((row) => row.applied_at instanceof Date)).toBe(true);
     });
   });
 
-  it("validates a repeat run without reapplying migration 0001", async () => {
+  it("validates a repeat run without reapplying production migrations", async () => {
     await applyProductionMigrations();
 
     await expect(applyProductionMigrations()).resolves.toEqual({ appliedVersions: [] });
@@ -302,7 +302,7 @@ SELECT
 
       await blocker.query("SELECT pg_advisory_unlock($1, $2)", [1_815_642_963, 1]);
       lockReleased = true;
-      await expect(operation).resolves.toEqual({ appliedVersions: [1] });
+      await expect(operation).resolves.toEqual({ appliedVersions: [1, 2] });
     } finally {
       if (!lockReleased) {
         await blocker.query("SELECT pg_advisory_unlock($1, $2)", [1_815_642_963, 1]);
@@ -311,7 +311,7 @@ SELECT
     }
   });
 
-  it("serializes concurrent runners and records migration 0001 once", async () => {
+  it("serializes concurrent runners and records each production migration once", async () => {
     const ownerUrl = databaseUrl(ownerBaseUrl ?? "", databaseName);
     const first = ownerConnection(ownerUrl);
     const second = ownerConnection(ownerUrl);
@@ -322,12 +322,12 @@ SELECT
       runMigrationsWithOwner({ connection: second, loadMigrations: load }),
     ]);
 
-    expect(results.map((result) => result.appliedVersions).toSorted()).toEqual([[], [1]]);
+    expect(results.map((result) => result.appliedVersions).toSorted()).toEqual([[], [1, 2]]);
     await withClient(ownerUrl, async (owner) => {
       const history = await owner.query<{ count: number }>(
         "SELECT COUNT(*)::integer AS count FROM logstream_migrations.schema_migrations",
       );
-      expect(history.rows).toEqual([{ count: 1 }]);
+      expect(history.rows).toEqual([{ count: 2 }]);
     });
   });
 });

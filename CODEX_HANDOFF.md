@@ -365,10 +365,13 @@ Current factual state at this checkpoint:
 - Stage 2, Task 2.1 Docker/database-readiness foundation was committed and
   pushed on `feat/database-foundation` as
   `6b0672ad5ba4a5282d58698ab8090b795278a330 feat: add Docker and database readiness foundation`.
-- Stage 2, Task 2.2 migration-runner implementation and validation are complete
-  on the same branch; the Task 2.2 changes remain uncommitted and unpushed
-  pending review.
-- Task 2.3 has not started and requires separate explicit authorization.
+- Stage 2, Task 2.2 migration runner was committed and pushed on
+  `feat/database-foundation` as
+  `59c3f4967bfc57fd2aa60d63020321f1d8ac3ae7 feat: add transactional database migration runner`.
+- Stage 2, Task 2.3 partitioned-schema implementation and validation are
+  complete on the same branch; the Task 2.3 changes remain uncommitted and
+  unpushed pending review.
+- Stage 3 has not started and requires separate explicit authorization.
 - No ADR acceptance is evidence that the design is implemented or that any
   performance target has been met.
 
@@ -376,9 +379,9 @@ Current factual state at this checkpoint:
 
 # 11. Next Planned Task
 
-The active task is Stage 2, Task 2.2 on `feat/database-foundation`. Review the
-validated migration-runner diff and wait for explicit commit approval. Do not
-commit or push Task 2.2 without that approval, and do not begin Task 2.3.
+The active task is Stage 2, Task 2.3 on `feat/database-foundation`. Review the
+validated partitioned-schema diff and wait for explicit commit approval. Do not
+commit or push Task 2.3 without that approval, and do not begin Stage 3.
 
 The accepted architecture is the baseline for later implementation, but
 evidence-gated details must still be decided from Stage 1 implementation,

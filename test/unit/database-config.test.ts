@@ -13,6 +13,7 @@ describe("loadDatabaseConfig", () => {
       connectionTimeoutMs: 2_000,
       startupTimeoutMs: 30_000,
       retryDelayMs: 500,
+      retentionDays: 30,
     });
   });
 
@@ -25,6 +26,7 @@ describe("loadDatabaseConfig", () => {
         DB_CONNECTION_TIMEOUT_MS: "1500",
         DB_STARTUP_TIMEOUT_MS: "45000",
         DB_RETRY_DELAY_MS: "250",
+        RETENTION_DAYS: "90",
       }),
     ).toEqual({
       connectionString: "postgresql://runtime:password@database:5432/logs",
@@ -33,6 +35,7 @@ describe("loadDatabaseConfig", () => {
       connectionTimeoutMs: 1_500,
       startupTimeoutMs: 45_000,
       retryDelayMs: 250,
+      retentionDays: 90,
     });
   });
 
@@ -42,6 +45,8 @@ describe("loadDatabaseConfig", () => {
     ["DB_CONNECTION_TIMEOUT_MS", "0"],
     ["DB_STARTUP_TIMEOUT_MS", "forever"],
     ["DB_RETRY_DELAY_MS", "-1"],
+    ["RETENTION_DAYS", "0"],
+    ["RETENTION_DAYS", "3651"],
   ])("rejects malformed %s configuration", (name, value) => {
     expect(() => loadDatabaseConfig({ [name]: value })).toThrow(`${name} must be`);
   });

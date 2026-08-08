@@ -14,6 +14,8 @@ import {
   migrateBeforeRuntime,
   runMigrationsWithOwnerRetry,
 } from "./database/migrations/migration-runner.js";
+import { buildPartitionPlan } from "./database/partitions/partition-plan.js";
+import { preparePartitions } from "./database/partitions/partition-preparer.js";
 import { waitForDatabase } from "./database/wait-for-database.js";
 import {
   installServerLifecycle,
@@ -121,6 +123,16 @@ async function main(): Promise<void> {
         loadMigrations: async () => loadMigrations(MIGRATIONS_DIRECTORY),
         timeoutMs: databaseConfig.startupTimeoutMs,
         retryDelayMs: databaseConfig.retryDelayMs,
+        afterMigrations: async ({ database, deadline, retryDelayMs, clock }) => {
+          const partitions = buildPartitionPlan(new Date(), databaseConfig.retentionDays);
+          await preparePartitions({
+            database,
+            partitions,
+            deadline,
+            retryDelayMs,
+            clock,
+          });
+        },
       });
     },
     async () => startRuntime(config, databaseConfig),
