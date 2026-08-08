@@ -11,6 +11,8 @@ const REDACTED_PATHS = [
   "*.databaseUrl",
   "connectionString",
   "*.connectionString",
+  "migrationConnectionString",
+  "*.migrationConnectionString",
   "password",
   "*.password",
   "token",

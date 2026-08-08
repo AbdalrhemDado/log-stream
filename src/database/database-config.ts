@@ -1,5 +1,7 @@
 const DEFAULT_DATABASE_URL =
   "postgresql://logstream_runtime:local_runtime_password@postgres:5432/logstream";
+const DEFAULT_MIGRATION_DATABASE_URL =
+  "postgresql://logstream_owner:local_owner_password@postgres:5432/logstream";
 const DEFAULT_POOL_MAX = 4;
 const DEFAULT_CONNECTION_TIMEOUT_MS = 2_000;
 const DEFAULT_STARTUP_TIMEOUT_MS = 30_000;
@@ -7,6 +9,7 @@ const DEFAULT_RETRY_DELAY_MS = 500;
 
 export interface DatabaseConfig {
   readonly connectionString: string;
+  readonly migrationConnectionString: string;
   readonly maxConnections: number;
   readonly connectionTimeoutMs: number;
   readonly startupTimeoutMs: number;
@@ -17,13 +20,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function parseDatabaseUrl(value: unknown): string {
+function parseDatabaseUrl(value: unknown, name: string, defaultValue: string): string {
   if (value === undefined) {
-    return DEFAULT_DATABASE_URL;
+    return defaultValue;
   }
 
   if (typeof value !== "string" || value.length === 0) {
-    throw new Error("DATABASE_URL must be a valid PostgreSQL URL.");
+    throw new Error(`${name} must be a valid PostgreSQL URL.`);
   }
 
   try {
@@ -36,7 +39,7 @@ function parseDatabaseUrl(value: unknown): string {
       throw new Error("invalid PostgreSQL URL");
     }
   } catch {
-    throw new Error("DATABASE_URL must be a valid PostgreSQL URL.");
+    throw new Error(`${name} must be a valid PostgreSQL URL.`);
   }
 
   return value;
@@ -87,7 +90,16 @@ export function loadDatabaseConfig(environment: unknown): DatabaseConfig {
   }
 
   return {
-    connectionString: parseDatabaseUrl(environment["DATABASE_URL"]),
+    connectionString: parseDatabaseUrl(
+      environment["DATABASE_URL"],
+      "DATABASE_URL",
+      DEFAULT_DATABASE_URL,
+    ),
+    migrationConnectionString: parseDatabaseUrl(
+      environment["MIGRATION_DATABASE_URL"],
+      "MIGRATION_DATABASE_URL",
+      DEFAULT_MIGRATION_DATABASE_URL,
+    ),
     maxConnections: parseBoundedInteger(
       environment["DB_POOL_MAX"],
       "DB_POOL_MAX",

@@ -19,7 +19,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run test/unit",
-    "test:integration": "vitest run --passWithNoTests test/integration",
+    "test:integration": "tsx test/harness/run-postgres-integration.ts",
+    "test:postgres": "tsx test/harness/run-postgres-integration.ts --all",
     "test:contract": "vitest run --passWithNoTests test/contract"
   },
   "dependencies": {

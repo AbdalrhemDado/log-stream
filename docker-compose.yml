@@ -9,6 +9,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://logstream_runtime:local_runtime_password@postgres:5432/logstream
+      MIGRATION_DATABASE_URL: postgresql://logstream_owner:local_owner_password@postgres:5432/logstream
       DB_CONNECTION_TIMEOUT_MS: "2000"
       DB_POOL_MAX: "4"
       DB_RETRY_DELAY_MS: "500"

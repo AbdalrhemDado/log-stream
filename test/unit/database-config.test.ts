@@ -7,6 +7,8 @@ describe("loadDatabaseConfig", () => {
     expect(loadDatabaseConfig({})).toEqual({
       connectionString:
         "postgresql://logstream_runtime:local_runtime_password@postgres:5432/logstream",
+      migrationConnectionString:
+        "postgresql://logstream_owner:local_owner_password@postgres:5432/logstream",
       maxConnections: 4,
       connectionTimeoutMs: 2_000,
       startupTimeoutMs: 30_000,
@@ -18,6 +20,7 @@ describe("loadDatabaseConfig", () => {
     expect(
       loadDatabaseConfig({
         DATABASE_URL: "postgresql://runtime:password@database:5432/logs",
+        MIGRATION_DATABASE_URL: "postgresql://owner:password@database:5432/logs",
         DB_POOL_MAX: "6",
         DB_CONNECTION_TIMEOUT_MS: "1500",
         DB_STARTUP_TIMEOUT_MS: "45000",
@@ -25,6 +28,7 @@ describe("loadDatabaseConfig", () => {
       }),
     ).toEqual({
       connectionString: "postgresql://runtime:password@database:5432/logs",
+      migrationConnectionString: "postgresql://owner:password@database:5432/logs",
       maxConnections: 6,
       connectionTimeoutMs: 1_500,
       startupTimeoutMs: 45_000,
@@ -57,6 +61,20 @@ describe("loadDatabaseConfig", () => {
 
     try {
       loadDatabaseConfig({ DATABASE_URL: secret });
+    } catch (error: unknown) {
+      expect(String(error)).not.toContain(secret);
+    }
+  });
+
+  it("rejects an invalid migration URL without echoing credentials", () => {
+    const secret = "private-owner-password";
+
+    expect(() => loadDatabaseConfig({ MIGRATION_DATABASE_URL: secret })).toThrow(
+      "MIGRATION_DATABASE_URL must be a valid PostgreSQL URL.",
+    );
+
+    try {
+      loadDatabaseConfig({ MIGRATION_DATABASE_URL: secret });
     } catch (error: unknown) {
       expect(String(error)).not.toContain(secret);
     }
