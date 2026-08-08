@@ -15,6 +15,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 0.1 — Requirement traceability
 
+- **Status:** Completed and merged to `main` in merge commit `f1a76ee`.
 - **Goal:** Establish the authoritative requirement baseline, edge cases, staged work, and terminology before architecture or code.
 - **Relevant requirement IDs:** All requirements; especially `INF-001`, `ING-001`–`ING-015`, `QRY-001`–`QRY-018`, `AGG-001`–`AGG-008`, `RET-001`–`RET-003`, and `PERF-001`–`PERF-007`.
 - **Dependencies:** Initial company specification and repository instructions.
@@ -25,6 +26,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 0.2 — Architecture proposal and ADR plan
 
+- **Status:** Architecture and all 12 ADRs accepted on `2026-08-08`; acceptance recorded in commit `169f62bf82d4f5bca332885ed3e006422591e381` on pushed branch `docs/architecture-design`, which is not merged.
 - **Goal:** Compare reasonable system designs and obtain approval for the high-level architecture without writing production code.
 - **Relevant requirement IDs:** `CORE-001`, `CORE-002`, `INF-001`–`INF-003`, `HLT-001`–`HLT-003`, `ING-013`, `QRY-005`, `QRY-010`–`QRY-014`, `AGG-002`–`AGG-004`, `RET-001`–`RET-003`, `SEC-001`–`SEC-003`, `PERF-001`–`PERF-006`.
 - **Dependencies:** Task 0.1 approved and committed.
@@ -103,7 +105,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 - **Goal:** Implement independent, deterministic runtime validation for every ingestion entry.
 - **Relevant requirement IDs:** `ING-003`–`ING-010`, `ING-014`, `ING-015`; decisions `DEC-002`, `DEC-003`, `DEC-004`, `DEC-006`.
-- **Dependencies:** Task 3.1 and approval of still-open timestamp grammar behavior.
+- **Dependencies:** Task 3.1 and the accepted timestamp grammar in `DEC-006`.
 - **Expected output:** Pure validator with stable rejection reasons and table-driven tests for every validation edge case.
 - **Training subjects:** Runtime narrowing, pure functions, ISO timestamp validation, boundary testing, compile-time versus runtime safety.
 - **Suggested branch:** Continue `feat/log-ingestion`.
@@ -135,7 +137,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 - **Goal:** Expose the exact ingestion contract with top-level validation, independent entries, partial acceptance, and durability-aware responses.
 - **Relevant requirement IDs:** `ING-001`–`ING-015`, `SEC-003`, `REL-001`; decisions `DEC-001`–`DEC-004`, `DEC-016`.
-- **Dependencies:** Tasks 3.2, 3.3, and 4.1; approval of any still-open response decisions.
+- **Dependencies:** Tasks 3.2, 3.3, and 4.1; accepted database-failure behavior in `DEC-016`.
 - **Expected output:** Route/service wiring plus unit, integration, and black-box contract tests for valid, mixed, invalid, malformed, unknown-field, and database-failure cases.
 - **Training subjects:** HTTP body parsing, status codes, request lifecycle, partial success, TypeScript error handling, transaction failure flow.
 - **Suggested branch:** Continue `feat/log-ingestion`.
@@ -157,7 +159,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 - **Goal:** Convert untrusted query strings into one safe typed filter model shared with aggregation.
 - **Relevant requirement IDs:** `QRY-001`–`QRY-009`, `QRY-015`–`QRY-017`, `AGG-004`; decisions `DEC-007`–`DEC-011`.
-- **Dependencies:** Stage 1 foundation and approval of open duplicate/empty-query/minimum-limit decisions.
+- **Dependencies:** Stage 1 foundation and accepted query decisions `DEC-007`–`DEC-011`.
 - **Expected output:** Pure parser and exhaustive table-driven tests for recognized, combined, malformed, duplicate, and unknown parameters.
 - **Training subjects:** HTTP query encoding, TypeScript narrowing, exact integer parsing, time ranges, client/server contract boundaries.
 - **Suggested branch:** `feat/log-query`
@@ -379,4 +381,9 @@ Optional tasks may start only after the required contract, CI, and performance e
 
 ## Current checkpoint
 
-Only Task 0.1 documentation is in progress. Task 0.2 and all implementation tasks remain unstarted pending review and explicit approval.
+- Task 0.1 is merged to `main` at `f1a76ee`.
+- Task 0.2 proposal commit `cc049b210672352b6979d0c5472986863c8f0651` is on `docs/architecture-design`.
+- The reviewer/architect accepted the Stage 0.2 architecture baseline and all 12 ADRs on `2026-08-08`.
+- Architecture acceptance commit: `169f62bf82d4f5bca332885ed3e006422591e381`.
+- The branch has been pushed but is not merged; the next action is PR creation, review, and merge of the architecture branch under separate authorization.
+- Stage 1 has not started and requires separate explicit authorization after the architecture branch is merged and `main` is updated.
