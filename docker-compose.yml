@@ -1,0 +1,66 @@
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://logstream_runtime:local_runtime_password@postgres:5432/logstream
+      MIGRATION_DATABASE_URL: postgresql://logstream_owner:local_owner_password@postgres:5432/logstream
+      DB_CONNECTION_TIMEOUT_MS: "2000"
+      DB_POOL_MAX: "4"
+      DB_RETRY_DELAY_MS: "500"
+      DB_STARTUP_TIMEOUT_MS: "30000"
+      LOG_LEVEL: info
+      PORT: "8080"
+      RETENTION_DAYS: "30"
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:8080/health').then((response) => {
+            if (!response.ok) process.exit(1)
+          }).catch(() => process.exit(1))
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 5s
+    cpus: 0.5
+    mem_limit: 256m
+    stop_grace_period: 15s
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:16.14-bookworm
+    environment:
+      POSTGRES_DB: logstream
+      POSTGRES_PASSWORD: local_superuser_password
+      POSTGRES_USER: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username postgres --dbname logstream"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 5s
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    cpus: 1.0
+    mem_limit: 1g
+    stop_grace_period: 15s
+    networks:
+      - backend
+
+networks:
+  backend:
+
+volumes:
+  postgres-data:

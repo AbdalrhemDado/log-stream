@@ -39,7 +39,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 1.1 — Project scaffold
 
-- **Status:** Completed, committed as `4b05d9dec6dc4bc522d49bd9ce715a92847372cc`, and pushed to `origin/chore/bootstrap`; not merged.
+- **Status:** Completed and merged through [PR #3](https://github.com/AbdalrhemDado/log-stream/pull/3) in merge commit `3f1960d8640ba77602f58d41d014ec65dff92695`.
 - **Goal:** Create the smallest strict TypeScript HTTP-service foundation and developer toolchain.
 - **Relevant requirement IDs:** `CORE-001`, `INF-002`, `CI-001`, `DEL-001`, `DOC-001`.
 - **Dependencies:** Approved Stage 0 architecture decisions affecting framework and project structure.
@@ -50,7 +50,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 1.2 — Error and shutdown foundation
 
-- **Status:** In progress on `chore/bootstrap`; implementation and validation are complete but uncommitted pending review.
+- **Status:** Completed as `7eceb267fa94dcf3b843959d7541ba271e83f29a` and merged through [PR #3](https://github.com/AbdalrhemDado/log-stream/pull/3) in merge commit `3f1960d8640ba77602f58d41d014ec65dff92695`.
 - **Goal:** Establish safe error mapping, request correlation, and graceful process shutdown.
 - **Relevant requirement IDs:** `HLT-001`, `SEC-003`, `REL-001`, `ING-012`, `QRY-015`, `AGG-008`.
 - **Dependencies:** Task 1.1.
@@ -63,6 +63,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 2.1 — Docker Compose foundation
 
+- **Status:** Completed and pushed on `feat/database-foundation` as `6b0672ad5ba4a5282d58698ab8090b795278a330` (`feat: add Docker and database readiness foundation`); the Stage 2 branch is not yet merged.
 - **Goal:** Make the application and PostgreSQL start reproducibly with the required ports, defaults, health checks, and resource profile.
 - **Relevant requirement IDs:** `CORE-002`, `INF-001`–`INF-003`, `HLT-001`, `DEL-002`, `OPT-002`.
 - **Dependencies:** Stage 1 foundation and approved deployment architecture.
@@ -73,8 +74,9 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 2.2 — Migration runner
 
+- **Status:** Completed and pushed on `feat/database-foundation` as `59c3f4967bfc57fd2aa60d63020321f1d8ac3ae7` (`feat: add transactional database migration runner`); the Stage 2 branch is not yet merged.
 - **Goal:** Apply ordered database migrations safely before readiness.
-- **Relevant requirement IDs:** `HLT-001`, `HLT-002`, `INF-001`, `SEC-001`, `DEL-002`.
+- **Relevant requirement IDs:** `CORE-002`, `INF-001`, `HLT-001`, `HLT-002`, `SEC-001`, `SEC-003`, `DEL-002`.
 - **Dependencies:** Task 2.1 and approved migration-tooling ADR.
 - **Expected output:** Migration mechanism, migration history, concurrency protection, failure handling, and empty-database integration tests.
 - **Training subjects:** PostgreSQL transactions and locks, idempotent startup, TypeScript async database code, Docker startup ordering.
@@ -83,6 +85,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 2.3 — Initial schema and indexes
 
+- **Status:** In progress on `feat/database-foundation`; implementation and validation are complete but uncommitted and unpushed pending review.
 - **Goal:** Implement only the approved initial storage design and minimal justified indexes.
 - **Relevant requirement IDs:** `CORE-002`, `ING-004`–`ING-008`, `QRY-005`, `QRY-010`–`QRY-012`, `RET-001`, `SEC-001`, `PERF-001`–`PERF-005`.
 - **Dependencies:** Task 2.2 and approved schema/attribute/ID/index/partition ADRs from Stage 0.2.
@@ -388,6 +391,8 @@ Optional tasks may start only after the required contract, CI, and performance e
 - The reviewer/architect accepted the Stage 0.2 architecture baseline and all 12 ADRs on `2026-08-08`.
 - Architecture acceptance commit: `169f62bf82d4f5bca332885ed3e006422591e381`.
 - Stage 0.2 was merged through [PR #2](https://github.com/AbdalrhemDado/log-stream/pull/2) in merge commit `056b16cacefa8f1f595d652865fb6c0269b72d90`; local `main` was updated.
-- Stage 1, Task 1.1 was committed as `4b05d9dec6dc4bc522d49bd9ce715a92847372cc` and pushed to `origin/chore/bootstrap`; it is not merged.
-- Stage 1, Task 1.2 implementation and validation are complete on `chore/bootstrap`; the work remains uncommitted and unpushed pending review.
-- Stage 2, Task 2.1 has not started and requires separate explicit authorization.
+- Stage 1 was merged through [PR #3](https://github.com/AbdalrhemDado/log-stream/pull/3) in merge commit `3f1960d8640ba77602f58d41d014ec65dff92695`; both approved Stage 1 commits are ancestors of `main`.
+- Stage 2, Task 2.1 was committed and pushed on `feat/database-foundation` as `6b0672ad5ba4a5282d58698ab8090b795278a330`.
+- Stage 2, Task 2.2 was committed and pushed on `feat/database-foundation` as `59c3f4967bfc57fd2aa60d63020321f1d8ac3ae7`.
+- Stage 2, Task 2.3 partitioned-schema implementation and validation are complete on the same branch; the Task 2.3 changes remain uncommitted and unpushed pending review.
+- Stage 3 has not started and requires separate explicit authorization.
