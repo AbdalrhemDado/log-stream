@@ -26,7 +26,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 0.2 — Architecture proposal and ADR plan
 
-- **Status:** Architecture and all 12 ADRs accepted on `2026-08-08`; acceptance recorded in commit `169f62bf82d4f5bca332885ed3e006422591e381` on pushed branch `docs/architecture-design`, which is not merged.
+- **Status:** Completed and merged through [PR #2](https://github.com/AbdalrhemDado/log-stream/pull/2) in merge commit `056b16cacefa8f1f595d652865fb6c0269b72d90`.
 - **Goal:** Compare reasonable system designs and obtain approval for the high-level architecture without writing production code.
 - **Relevant requirement IDs:** `CORE-001`, `CORE-002`, `INF-001`–`INF-003`, `HLT-001`–`HLT-003`, `ING-013`, `QRY-005`, `QRY-010`–`QRY-014`, `AGG-002`–`AGG-004`, `RET-001`–`RET-003`, `SEC-001`–`SEC-003`, `PERF-001`–`PERF-006`.
 - **Dependencies:** Task 0.1 approved and committed.
@@ -39,6 +39,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 1.1 — Project scaffold
 
+- **Status:** In progress on `chore/bootstrap`; implementation and validation are complete but uncommitted pending review.
 - **Goal:** Create the smallest strict TypeScript HTTP-service foundation and developer toolchain.
 - **Relevant requirement IDs:** `CORE-001`, `INF-002`, `CI-001`, `DEL-001`, `DOC-001`.
 - **Dependencies:** Approved Stage 0 architecture decisions affecting framework and project structure.
@@ -382,8 +383,9 @@ Optional tasks may start only after the required contract, CI, and performance e
 ## Current checkpoint
 
 - Task 0.1 is merged to `main` at `f1a76ee`.
-- Task 0.2 proposal commit `cc049b210672352b6979d0c5472986863c8f0651` is on `docs/architecture-design`.
+- Task 0.2 proposal commit: `cc049b210672352b6979d0c5472986863c8f0651`.
 - The reviewer/architect accepted the Stage 0.2 architecture baseline and all 12 ADRs on `2026-08-08`.
 - Architecture acceptance commit: `169f62bf82d4f5bca332885ed3e006422591e381`.
-- The branch has been pushed but is not merged; the next action is PR creation, review, and merge of the architecture branch under separate authorization.
-- Stage 1 has not started and requires separate explicit authorization after the architecture branch is merged and `main` is updated.
+- Stage 0.2 was merged through [PR #2](https://github.com/AbdalrhemDado/log-stream/pull/2) in merge commit `056b16cacefa8f1f595d652865fb6c0269b72d90`; local `main` was updated.
+- Stage 1, Task 1.1 implementation and validation are complete on `chore/bootstrap`; the work is not committed or pushed and remains in progress pending review.
+- Task 1.2 has not started and requires separate explicit authorization.
