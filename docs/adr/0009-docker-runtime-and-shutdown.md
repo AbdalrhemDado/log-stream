@@ -1,8 +1,9 @@
 # ADR 0009 — Docker Runtime and Shutdown
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
-- **Implementation stage:** Stage 2 after approval
+- **Implementation stage:** Stage 2 after explicit task authorization
 
 ## Context
 
@@ -16,9 +17,9 @@ A fresh checkout must start with plain `docker compose up`, expose the applicati
 | Separate application and PostgreSQL services in Compose | Independent health, resources, logs, and persistent storage | Requires explicit dependency/readiness handling |
 | Application, PostgreSQL, and mandatory proxy/queue services | More deployment controls | Adds memory, CPU, startup states, and failure modes without a company requirement |
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** use two required Compose services: a non-root Node application container and a PostgreSQL container with a named data volume. Pin explicit implementation-time image versions, expose only application port `8080` to the host by default, and keep PostgreSQL on the internal Compose network.
+**ACCEPTED — 2026-08-08:** use two required Compose services: a non-root Node application container and a PostgreSQL container with a named data volume. Use PostgreSQL 16 as the compatibility baseline and pin an exact supported 16.x image tag or digest during Stage 2. Pin the Node implementation image, expose only application port `8080` to the host by default, and keep PostgreSQL on the internal Compose network.
 
 Apply the specified CPU and memory limits in the Compose configuration and verify that the chosen Compose mode enforces them. Use an exec-form application command and an init process or equivalent correct PID 1 behavior. On `SIGTERM`, stop accepting new requests, mark readiness false, allow a measured bounded grace period for in-flight requests/transactions, close the database pool, and exit. PostgreSQL receives its own normal Compose stop sequence.
 
@@ -51,7 +52,6 @@ No proxy, queue, dashboard, or migration sidecar is part of the required baselin
 - Edge cases: `EDGE-BAT-007`, `EDGE-BAT-008`, `EDGE-BAT-011`, `EDGE-RET-005`
 - Training: Learn Docker; Learn HTTP Servers in TypeScript; Learn HTTP Clients in TypeScript; Learn TypeScript
 
-## Approval questions
+## Acceptance record
 
-1. Approve the two-service Compose baseline with no mandatory proxy or queue?
-2. Approve bounded graceful draining, with the exact timeout selected from later failure/load evidence?
+The reviewer approved the two-service Compose baseline, PostgreSQL 16 compatibility baseline, and bounded graceful-draining policy on `2026-08-08`. Exact image and shutdown-timeout values remain Stage 2 implementation selections subject to validation.

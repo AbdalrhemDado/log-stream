@@ -27,7 +27,7 @@ This matrix separates the authoritative company contract from behavior chosen by
 | EDGE-ING-006 | Unknown top-level JSON fields | DESIGN DECISION | The specification requires `logs` but does not prohibit extra top-level properties. | Accept and ignore harmless extra fields. Validate and process only `logs`. | Project decision; compatibility test. |
 | EDGE-ING-007 | Unknown fields inside a log entry | DESIGN DECISION | The specification defines required and optional fields but does not prohibit additional properties. | Accept and ignore extra entry fields; do not persist or echo them. | Project decision; compatibility and persistence tests. |
 | EDGE-ING-008 | Unknown field contains a large or complex value | DESIGN DECISION | The specification does not define unknown-field handling. | Ignore semantically, while normal HTTP body/resource protections still apply to the complete request. | Project decision; resource policy deferred where limits are involved. |
-| EDGE-ING-009 | Duplicate JSON object keys | DESIGN DECISION | The specification is silent, and JSON parser behavior may decide which value survives. | Document and test the selected framework/parser behavior if duplicate keys can be observed. | Open until framework selection. |
+| EDGE-ING-009 | Duplicate JSON object keys | DESIGN DECISION | The specification is silent, and JSON parser behavior may decide which value survives. | Document and test Fastify/its JSON parser behavior if duplicate keys can be observed. | Deferred to framework/parser implementation evidence. |
 
 ## Required strings and timestamp validation
 
@@ -40,11 +40,11 @@ This matrix separates the authoritative company contract from behavior chosen by
 | EDGE-VAL-005 | Leading or trailing whitespace around meaningful content | DESIGN DECISION | The specification does not require normalization. | Preserve the supplied string exactly. | Project decision; round-trip test. |
 | EDGE-VAL-006 | Empty level or differently-cased level | SPECIFIED | Level must be exactly one of `debug`, `info`, `warn`, or `error`. | Reject it; do not normalize case. | Settled; validator tests. |
 | EDGE-VAL-007 | Invalid calendar date or otherwise invalid timestamp | SPECIFIED | Timestamp must be valid ISO 8601. | Reject the entry. | Settled; validator tests. |
-| EDGE-VAL-008 | ISO 8601 offset and fractional-second variants | DESIGN DECISION | The specification says valid ISO 8601 but does not state the accepted grammar profile. | Define a documented timestamp profile before implementing the validator. | Open; validator compatibility decision. |
-| EDGE-VAL-009 | Date-only or time without an explicit offset | DESIGN DECISION | “Timestamp” and “ISO 8601” do not clarify whether an unambiguous instant is required. | Decide and document the accepted profile; do not rely on permissive JavaScript parsing accidentally. | Open; validator compatibility decision. |
+| EDGE-VAL-008 | ISO 8601 offset and fractional-second variants | DESIGN DECISION | The specification says valid ISO 8601 but does not state the accepted grammar profile. | Accept extended date-time with mandatory `Z` or `±HH:mm` and optional fractional seconds; validate real calendar/time values and normalize to UTC. | Approved `2026-08-08`; validator compatibility tests pending. |
+| EDGE-VAL-009 | Date-only or time without an explicit offset | DESIGN DECISION | “Timestamp” and “ISO 8601” do not clarify whether an unambiguous instant is required. | Reject date-only values and timestamps without an explicit timezone. | Approved `2026-08-08`; validator rejection tests pending. |
 | EDGE-VAL-010 | Timestamp exactly five minutes in the future | DERIVED | A timestamp must not be more than five minutes in the future. | Accept the exact boundary; reject only values beyond it. | Settled; boundary test. |
 | EDGE-VAL-011 | Time advances while one batch is being validated | DERIVED | Every entry is subject to the same five-minute rule. | Capture the request reference time once so entries in one batch receive consistent treatment. | Settled; pure-validator test. |
-| EDGE-VAL-012 | Very old but otherwise valid timestamp | DESIGN DECISION | Ingestion has a future bound but no explicit lower age bound. | Keep ingestion-age behavior open until retention semantics are approved. | Open; linked to EDGE-RET-001. |
+| EDGE-VAL-012 | Very old but otherwise valid timestamp | DESIGN DECISION | Ingestion has a future bound but no explicit lower age bound. | Accept it; it becomes immediately eligible for retention. | Approved `2026-08-08`; linked to EDGE-RET-001. |
 
 ## Attributes
 
@@ -56,12 +56,12 @@ This matrix separates the authoritative company contract from behavior chosen by
 | EDGE-ATTR-004 | Nested object or array value | SPECIFIED | Nested objects and arrays are not allowed. | Reject the affected entry. | Settled; validator tests. |
 | EDGE-ATTR-005 | Null attribute value | DERIVED | Permitted values are limited to strings, numbers, and booleans. | Reject the affected entry. | Settled; validator test. |
 | EDGE-ATTR-006 | `attributes` is an array, primitive, or `null` | SPECIFIED | When present, attributes must be a flat object. | Reject the affected entry. | Settled; validator tests. |
-| EDGE-ATTR-007 | Empty attribute key on ingestion | DESIGN DECISION | The specification permits arbitrary keys but does not define whether an empty key is valid. | Decide before validator implementation. | Open; compatibility/security review. |
-| EDGE-ATTR-008 | Special keys such as `__proto__` or `constructor` | DESIGN DECISION | The specification permits arbitrary keys but does not discuss language-specific object hazards. | Preserve contract compatibility only with a representation that cannot mutate application prototypes or query structure. | Open until implementation design; security tests required. |
-| EDGE-ATTR-009 | Numeric spellings and string comparison | DERIVED | Query attribute equality is compared as strings while response values retain their JSON types. | Define deterministic string conversion when the storage/query ADR is approved. | Deferred representation; cross-type tests required. |
+| EDGE-ATTR-007 | Empty attribute key on ingestion | DESIGN DECISION | The specification permits arbitrary keys but does not define whether an empty key is valid. | Accept and preserve it; bare query name `attr.` remains invalid because it lacks a key segment. | Approved `2026-08-08`; ingestion round-trip and parser tests pending. |
+| EDGE-ATTR-008 | Special keys such as `__proto__` or `constructor` | DESIGN DECISION | The specification permits arbitrary keys but does not discuss language-specific object hazards. | Accept/preserve empty and non-empty Unicode keys without normalization and use own-property/prototype-safe representations for JavaScript-sensitive names. | Approved `2026-08-08`; prototype-safety tests required. |
+| EDGE-ATTR-009 | Numeric spellings, overflow, and string comparison | DESIGN DECISION | Query attribute equality is compared as strings while response values retain their JSON types; exact numeric conversion behavior is unspecified. | Accept finite JavaScript numbers from JSON parsing, reject non-finite results, use JSON/ECMAScript serialization for search strings, canonicalize negative zero as `"0"`, preserve response JSON numbers, and document IEEE-754 limits. | Approved `2026-08-08`; numeric boundary/cross-type tests required. |
 | EDGE-ATTR-010 | Log ingested without attributes is queried | DERIVED | The required query response includes an `attributes` field, while ingestion makes it optional. | Always return `"attributes": {}` rather than omitting the field. This preserves a stable response shape and represents no supplied attributes. | Settled compatibility decision; contract test. |
 | EDGE-ATTR-011 | Maximum attribute count, key length, or value length | DEFERRED | The specification sets no explicit size limits and requires load-generator compatibility. | Establish only evidence-based safety limits; do not add a small undocumented cap. | Deferred to performance/security validation. |
-| EDGE-ATTR-012 | Attribute storage and search representation | DEFERRED | Arbitrary attributes and string-comparison queries are required; physical design is intentionally open. | Compare alternatives in Stage 0.2; no selection in Task 0.1. | Deferred ADR. |
+| EDGE-ATTR-012 | Attribute storage and search representation | DESIGN DECISION | Arbitrary attributes and string-comparison queries are required; physical design is not specified. | Use accepted original typed JSONB plus normalized string-search JSONB. | Approved `2026-08-08`; storage/query performance evidence pending. |
 
 ## Batch processing and failures
 
@@ -73,9 +73,9 @@ This matrix separates the authoritative company contract from behavior chosen by
 | EDGE-BAT-004 | Rejected entries appear out of order internally | DESIGN DECISION | The specification requires original indexes but not rejection-array ordering. | Return rejections in ascending original-index order for predictability. | Project decision; response-order test. |
 | EDGE-BAT-005 | Exact rejection reason wording | DESIGN DECISION | Reasons must be useful, but exact text is not prescribed. | Use stable, field-specific reasons without stack traces or internal details. | Open vocabulary; table-driven tests. |
 | EDGE-BAT-006 | Malformed JSON | SPECIFIED | Return `400`. | Do not treat parser failure as an entry-level rejection. | Settled; raw malformed-body contract test. |
-| EDGE-BAT-007 | Database failure after successful validation | SPECIFIED | Never return `200` for data that was not durably accepted. | Return a safe server failure; do not report accepted success. | Durability settled; exact status/body open. |
-| EDGE-BAT-008 | Failure after some internal chunks execute | DERIVED | Accepted success must represent durable acceptance. | Transaction/commit behavior must prevent a false accepted count or undocumented partial commit. | Mechanism deferred; failure integration test. |
-| EDGE-BAT-009 | Exact database-failure status and body | DESIGN DECISION | The specification does not prescribe this failure response. | Select safe `500`/`503` semantics in the error architecture; never expose raw database errors. | Open until Stage 1/2 design. |
+| EDGE-BAT-007 | Database failure after successful validation | SPECIFIED | Never return `200` for data that was not durably accepted. | Return no accepted-success body; use the accepted generic `503`/`500` mapping and redaction policy. | Architecture settled; failure integration tests pending. |
+| EDGE-BAT-008 | Failure after some internal chunks execute | DERIVED | Accepted success must represent durable acceptance. | Execute all accepted chunks in one transaction so partial internal work cannot produce a false accepted count. | Accepted architecture; failure integration test pending. |
+| EDGE-BAT-009 | Exact database-failure status and body | DESIGN DECISION | The specification does not prescribe this failure response. | Confidently transient database unavailability returns generic `503` plus `Retry-After`; unexpected/internal failures return generic `500`; never expose PostgreSQL errors, SQL values, credentials, or stacks. | Approved `2026-08-08`; failure/redaction tests pending. |
 | EDGE-BAT-010 | Very large valid batch | DEFERRED | No batch maximum is specified; a small hidden limit may break the load generator. | Measure memory, body parsing, insertion, and transaction behavior before setting/documenting a safety policy. | Deferred benchmark and contract evidence. |
 | EDGE-BAT-011 | Client disconnects while a commit is in progress | DESIGN DECISION | The specification is silent; durability still governs any success claim. | Define cancellation/commit semantics with the server and database lifecycle design. | Open until architecture implementation. |
 
@@ -88,15 +88,15 @@ This matrix separates the authoritative company contract from behavior chosen by
 | EDGE-QRY-003 | Misspelled supported parameter | DESIGN DECISION | The specification does not define typo handling. | It is an unknown parameter and is ignored; document that clients must use exact names. | Consequence of EDGE-QRY-002; compatibility test. |
 | EDGE-QRY-004 | Malformed `attr.` with no key | DERIVED | Supported syntax is `attr.<key>`. | Reject with `400` because it claims a recognized namespace without supplying the required key. | Settled; parser test. |
 | EDGE-QRY-005 | Multiple distinct `attr.<key>` parameters | DERIVED | Filters are freely combinable. | Combine distinct attribute filters with logical `AND`. | Settled; integration test. |
-| EDGE-QRY-006 | Repeated same attribute key | DESIGN DECISION | The specification does not define duplicate-filter semantics. | Decide whether to reject or define explicit `AND` semantics. | Open; parser/compatibility review. |
-| EDGE-QRY-007 | Duplicate scalar parameter such as two `service` values | DESIGN DECISION | The specification describes scalar parameters but not duplicates. | Decide whether to reject or choose a documented value. | Open; HTTP parser behavior review. |
-| EDGE-QRY-008 | Empty `q` | DESIGN DECISION | The specification defines substring matching but not an empty search. | Decide between a no-op filter and `400`; do not let database behavior decide accidentally. | Open; contract decision. |
+| EDGE-QRY-006 | Repeated same attribute key | DESIGN DECISION | The specification does not define duplicate-filter semantics. | Reject repeated same-key filters with `400`, even when values match; distinct keys combine with logical `AND`. | Approved `2026-08-08`; parser/contract tests pending. |
+| EDGE-QRY-007 | Duplicate scalar parameter such as two `service` values | DESIGN DECISION | The specification describes scalar parameters but not duplicates. | Reject with `400`, including identical duplicates. | Approved `2026-08-08`; parser/contract tests pending. |
+| EDGE-QRY-008 | Empty `q` | DESIGN DECISION | The specification defines substring matching but not an empty search. | Treat as no filter and normalize identically to absent `q`, including for cursor fingerprints. | Approved `2026-08-08`; query/cursor tests pending. |
 | EDGE-QRY-009 | `%`, `_`, or escape characters in `q` | DERIVED | `q` is a substring value, not a user-provided SQL pattern. | Treat these characters literally. | Settled; query-builder and injection tests. |
 | EDGE-QRY-010 | Case variants in `q` | SPECIFIED | `q` is case-insensitive. | Match independent of letter case under documented database semantics. | Settled; integration tests. |
 | EDGE-QRY-011 | Case variants in service, level, attribute key, or value | SPECIFIED | Service/level are exact matches; attributes compare as strings. Only `q` is declared case-insensitive. | Do not add case-folding to other filters. | Settled; integration tests. |
 | EDGE-QRY-012 | Missing `limit` | SPECIFIED | Default is `100`. | Use `100`. | Settled; contract test. |
 | EDGE-QRY-013 | `limit` over `1000`, non-numeric, or otherwise invalid | SPECIFIED | Maximum is `1000`; invalid/non-numeric/out-of-range values return `400`. | Parse strictly and reject invalid input. | Settled except minimum; parser tests. |
-| EDGE-QRY-014 | `limit=0` or negative limit | DESIGN DECISION | The company gives a default and maximum but no explicit minimum. | Project prompt proposes minimum `1`; record approval before implementation. | Open; contract decision. |
+| EDGE-QRY-014 | `limit=0` or negative limit | DESIGN DECISION | The company gives a default and maximum but no explicit minimum. | Use minimum `1`, default `100`, maximum `1000`, and strict base-10 integer parsing. | Approved `2026-08-08`; parser boundary tests pending. |
 | EDGE-QRY-015 | Partial numeric limit such as `10abc` | DERIVED | A non-numeric limit is invalid. | Reject rather than partially parse. | Settled; parser test. |
 | EDGE-QRY-016 | `until` before `since` | SPECIFIED | This range is invalid. | Return `400`. | Settled; parser test. |
 | EDGE-QRY-017 | `since` equals `until` | DERIVED | The range is inclusive at `since`, exclusive at `until`, and only an earlier `until` is declared invalid. | Accept as an empty range. | Settled; integration test. |
@@ -109,13 +109,13 @@ This matrix separates the authoritative company contract from behavior chosen by
 | ID | Case | Classification | Company specification | Project position | Status / expected evidence |
 |---|---|---|---|---|---|
 | EDGE-CUR-001 | Malformed cursor | SPECIFIED | Invalid or malformed cursors return `400` with the error response shape. | Reject safely without exposing internals. | Settled; contract tests. |
-| EDGE-CUR-002 | Multiple logs share one timestamp | SPECIFIED | Ordering must remain deterministic when timestamps are equal. | Use an approved stable tie-breaker and matching keyset condition. | Requirement settled; ID/tie-breaker deferred. |
+| EDGE-CUR-002 | Multiple logs share one timestamp | SPECIFIED | Ordering must remain deterministic when timestamps are equal. | Use UUID v4 as the accepted descending tie-breaker and the matching tuple keyset condition. | Architecture approved `2026-08-08`; integration tests pending. |
 | EDGE-CUR-003 | Final page | SPECIFIED | `next_cursor` is `null` when no additional results exist. | Return `null`, including exact-limit final pages. | Settled; pagination tests. |
-| EDGE-CUR-004 | Cursor reused with different filters | DEFERRED | Cursor format is implementation-defined. | Decide binding/validation rules with the Stage 0.2 cursor design. | Deferred architecture decision. |
-| EDGE-CUR-005 | Cursor tampering | DEFERRED | Malformed cursors are invalid, but integrity mechanism is not specified. | Select validation/integrity behavior in Stage 0.2. | Deferred architecture/security analysis. |
-| EDGE-CUR-006 | Rows inserted between pages | DESIGN DECISION | The specification requires cursor pagination and deterministic order but no snapshot guarantee. | Define and document continuation semantics; do not claim snapshot isolation unless implemented. | Open; integration tests after cursor design. |
-| EDGE-CUR-007 | Rows deleted by retention between pages | DESIGN DECISION | The specification does not define this interaction. | Define best-effort continuation semantics and document limitations. | Open; cursor/retention integration test. |
-| EDGE-CUR-008 | ID, tie-breaker, and cursor encoding | DEFERRED | IDs must be unique and cursors opaque; formats are implementation-defined. | Evaluate in Stage 0.2 without selecting a format here. | Deferred ADR. |
+| EDGE-CUR-004 | Cursor reused with different filters | DESIGN DECISION | Cursor format is implementation-defined. | Bind a canonical normalized filter/sort-version fingerprint; exclude `limit`, ignored parameters, and the cursor itself; mismatch returns `400`. | Approved `2026-08-08`; codec compatibility tests pending. |
+| EDGE-CUR-005 | Cursor tampering | DESIGN DECISION | Malformed cursors are invalid, but integrity mechanism is not specified. | Use an unsigned cursor: validate structure/fields/filter binding but do not claim authentication of timestamp/ID; structurally valid position changes may be accepted. | Approved `2026-08-08`; documented-behavior tests pending. |
+| EDGE-CUR-006 | Rows inserted between pages | DESIGN DECISION | The specification requires cursor pagination and deterministic order but no snapshot guarantee. | Use read-committed continuation; newer rows ahead of an existing cursor may not appear on later pages. | Approved `2026-08-08`; concurrent integration tests pending. |
+| EDGE-CUR-007 | Rows deleted by retention between pages | DESIGN DECISION | The specification does not define this interaction. | Rows may disappear; deterministic keyset continuation applies to rows that still exist, without a snapshot guarantee. | Approved `2026-08-08`; cursor/retention tests pending. |
+| EDGE-CUR-008 | ID, tie-breaker, and cursor encoding | DESIGN DECISION | IDs must be unique and cursors opaque; formats are implementation-defined. | Use UUID v4, `(timestamp DESC, id DESC)`, and a versioned base64url cursor. | Approved `2026-08-08`; codec/pagination tests pending. |
 
 ## Aggregation
 
@@ -127,20 +127,20 @@ This matrix separates the authoritative company contract from behavior chosen by
 | EDGE-AGG-004 | Equal range bounds | DERIVED | Range bounds retain inclusive/exclusive semantics, and only earlier `until` is explicitly invalid. | Accept and return an empty `buckets` array. | Settled; contract test. |
 | EDGE-AGG-005 | Empty time buckets | SPECIFIED | Empty buckets may be omitted. | Omit them rather than synthesizing zero rows unless later requirements change. | Settled; integration test. |
 | EDGE-AGG-006 | No grouping | SPECIFIED | `group` must be `null`. | Include the field with JSON null on every result row. | Settled; response-shape test. |
-| EDGE-AGG-007 | Multiple groups have the same bucket start | DESIGN DECISION | Only bucket-start ascending order is required. | Decide whether to add a deterministic secondary group order. | Open; deterministic-output review. |
-| EDGE-AGG-008 | Count exceeds JavaScript safe integer | DESIGN DECISION | Response requires a numeric `count`, but extreme counts and serialization are not discussed. | Define safe conversion/error behavior before result mapping. | Open; type and integration tests. |
-| EDGE-AGG-009 | Bucket timezone and anchor behavior | DEFERRED | Bucket sizes and range semantics are specified; the database bucketing implementation is not. | Decide with the Stage 0.2 database design and test boundary instants. | Deferred ADR/integration evidence. |
+| EDGE-AGG-007 | Multiple groups have the same bucket start | DESIGN DECISION | Only bucket-start ascending order is required. | Add group value ascending as the deterministic secondary order. | Approved `2026-08-08`; deterministic-output tests pending. |
+| EDGE-AGG-008 | Count exceeds JavaScript safe integer | DESIGN DECISION | Response requires a numeric `count`, but extreme counts and serialization are not discussed. | Convert bigint only within JavaScript's safe-integer range; otherwise return a generic internal error. | Approved `2026-08-08`; boundary/result-mapping tests pending. |
+| EDGE-AGG-009 | Bucket timezone and anchor behavior | DESIGN DECISION | Bucket sizes and range semantics are specified; the database bucketing implementation is not. | Use UTC PostgreSQL `date_bin` with origin `1970-01-01 00:00:00+00`; buckets are `[start, start + bucket)`, with whitelisted intervals and UTC serialization. | Approved `2026-08-08`; boundary/timezone evidence pending. |
 
 ## Retention and lifecycle
 
 | ID | Case | Classification | Company specification | Project position | Status / expected evidence |
 |---|---|---|---|---|---|
-| EDGE-RET-001 | Ingested timestamp is already older than the configured retention window | DESIGN DECISION | Ingestion sets no lower timestamp bound; retention must remove expired data. | Decide whether to accept then promptly expire or reject under documented policy. | Open for Stage 0.2 retention analysis. |
-| EDGE-RET-002 | Timestamp exactly at retention cutoff | DESIGN DECISION | The specification requires configurable expiry but does not define cutoff inclusivity. | Define one precise comparison and test both sides of the boundary. | Open for Stage 0.2. |
-| EDGE-RET-003 | Cleanup overlaps ingestion/querying | SPECIFIED | Retention is evaluated on avoiding major ingestion disruption, long locks, and excessive bloat. | Validate the selected design under concurrent traffic. | Requirement settled; mechanism/performance deferred. |
-| EDGE-RET-004 | Multiple application instances run cleanup | DEFERRED | Safe concurrent startup/cleanup is evaluated, but the mechanism is open. | Select coordination behavior during Stage 0.2 architecture. | Deferred ADR and concurrency tests. |
-| EDGE-RET-005 | Cleanup fails | DERIVED | Reliability and retention remain required; failure must not become silent data loss or an application crash. | Define observable failure/retry behavior with the retention architecture. | Deferred mechanism; failure tests required. |
-| EDGE-RET-006 | Partitioning versus bounded deletion | DEFERRED | The company specifies outcomes, not storage/cleanup mechanics. | Compare alternatives in Stage 0.2 and later validate under load. | Deferred ADR and benchmark. |
+| EDGE-RET-001 | Ingested timestamp is already older than the configured retention window | DESIGN DECISION | Ingestion sets no lower timestamp bound; retention must remove expired data. | Accept it and make it immediately eligible for retention. | Approved `2026-08-08`; retention integration tests pending. |
+| EDGE-RET-002 | Timestamp exactly at retention cutoff | DESIGN DECISION | The specification requires configurable expiry but does not define cutoff inclusivity. | Expire only `timestamp < cutoff`; an equal timestamp remains until a later run. | Approved `2026-08-08`; boundary tests pending. |
+| EDGE-RET-003 | Cleanup overlaps ingestion/querying | SPECIFIED | Retention is evaluated on avoiding major ingestion disruption, long locks, and excessive bloat. | Validate accepted partition drops/bounded default cleanup under concurrent traffic. | Mechanism approved; performance evidence pending. |
+| EDGE-RET-004 | Multiple application instances run cleanup | DESIGN DECISION | Safe concurrent startup/cleanup is evaluated, but the mechanism is open. | Use non-blocking PostgreSQL advisory locking so only one coordinator performs cleanup. | Approved `2026-08-08`; concurrency tests pending. |
+| EDGE-RET-005 | Cleanup fails | DERIVED | Reliability and retention remain required; failure must not become silent data loss or an application crash. | Record/redact the failure, leave request handling available, and retry on a later scheduled run without false success. | Accepted failure posture; implementation tests required. |
+| EDGE-RET-006 | Partitioning versus bounded deletion | DESIGN DECISION | The company specifies outcomes, not storage/cleanup mechanics. | Use daily UTC partitions, partition drops, and bounded default-partition cleanup as the accepted baseline. | Approved `2026-08-08`; ingestion/cleanup measurement still required. |
 
 ## Optional features and default compatibility
 
@@ -152,20 +152,17 @@ This matrix separates the authoritative company contract from behavior chosen by
 | EDGE-OPT-004 | Auth enabled without a load-generator key | SPECIFIED | The service still starts and remains healthy; no key is seeded. | Preserve readiness while data endpoints enforce configured auth. | Conditional startup test. |
 | EDGE-OPT-005 | Optional rate limit affects the load generator | SPECIFIED | Rate limiting must be off by default or exempt the seeded load-generator key. | Optional limiting cannot reduce default compatibility. | Conditional contract/load test. |
 
-## Architecture and performance decisions deliberately deferred
+## Accepted architecture and remaining evidence gates
 
-The following are not resolved by this matrix and must not be inferred from examples in the project prompt:
+The reviewer/architect accepted the Stage 0.2 baseline on `2026-08-08`, including dual JSONB, UUID v4 ordering, unsigned cursors, daily partitions/retention, `UNNEST`, plain `pg`, ordered migrations, Fastify feature modules, PostgreSQL 16 compatibility, UTC `date_bin`, and separate owner/runtime roles.
 
-- JSONB and attribute storage design;
-- index selection;
-- partitioning strategy;
-- retention mechanism;
-- UUID or other ID/tie-breaker choice;
-- cursor encoding and integrity design;
-- `COPY` versus `UNNEST` or another bulk-ingestion method;
-- migration tooling;
-- framework-specific architecture;
-- safe maximum batch/body/query sizes;
-- database pool, concurrency, and backpressure thresholds.
+Acceptance is not implementation or performance proof. These items still require scheduled implementation evidence:
 
-Each requires an approved ADR or measured evidence in its scheduled task.
+- exact DDL, image tags/digests, and migration/privilege behavior;
+- candidate level, GIN, and trigram indexes;
+- optimal batch/chunk and pool sizes;
+- whether measurements justify `COPY` or a superseding ADR;
+- safe maximum batch/body/query sizes that preserve load-generator compatibility;
+- backpressure thresholds, query plans, retention impact, and all required load targets.
+
+No company requirement state advances until its implementation and evidence exist.

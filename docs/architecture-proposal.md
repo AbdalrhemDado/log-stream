@@ -1,15 +1,16 @@
-# Stage 0, Task 0.2 — Architecture and System-Design Proposal
+# Stage 0, Task 0.2 — Accepted Architecture and System Design
 
 ## Document status
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED ARCHITECTURE BASELINE`
+- **Decision date:** `2026-08-08`
 - **Scope:** architecture analysis and ADR plan only
 - **Source of truth:** `docs/company-requirements.md`
 - **Requirements baseline:** `docs/requirements-traceability.md`
 - **Edge-case baseline:** `docs/edge-case-matrix.md`
 - **Performance evidence:** pending; this document contains targets and hypotheses, not benchmark results
 
-Every recommendation in this document is a proposal for review. No recommendation authorizes implementation until it is explicitly approved.
+The reviewer/architect accepted the architecture baseline and ADRs on `2026-08-08`. Acceptance authorizes these choices as the implementation baseline; it does not prove implementation, correctness, or performance, and it does not authorize Stage 1 in this task. Evidence-gated indexes, pool/chunk comparisons, exact image tags, timeouts, and benchmark outcomes remain implementation measurements.
 
 ## Decision principles
 
@@ -57,7 +58,7 @@ flowchart LR
 | HTTP API plus queue and ingestion workers | Smooths bursts and isolates ingestion CPU | A success response cannot precede durable PostgreSQL acceptance without a more complex acknowledgement protocol; extra infrastructure | Queue can improve burst handling but adds serialization, copying, and eventual visibility | Requires queue durability, retries, poison-message handling, and more containers | Demonstrates distributed systems, but complicates proof of the required durability contract |
 | Multiple microservices for ingestion, query, and retention | Independent deployment and ownership boundaries | Unnecessary network calls and operational overhead for a one-to-two-week project | More CPU/memory overhead under strict limits; does not improve a single PostgreSQL bottleneck | Highest complexity and failure surface | Harder to explain and debug live; likely viewed as over-engineering |
 
-**PROPOSED — not approved:** use one Fastify-based modular TypeScript application plus PostgreSQL, with synchronous durable ingestion and an in-process retention coordinator. Do not add a queue, cache, or service split to the required path. PostgreSQL remains the source of truth.
+**ACCEPTED — 2026-08-08:** use one Fastify-based modular TypeScript application plus PostgreSQL, with synchronous durable ingestion and an in-process retention coordinator. Do not add a queue, cache, or service split to the required path. PostgreSQL remains the source of truth.
 
 **References:** `CORE-001`, `CORE-002`, `ING-013`, `INF-001`–`INF-003`, `PERF-001`–`PERF-006`, `EDGE-BAT-007`, `EDGE-BAT-008`.
 
@@ -101,7 +102,7 @@ flowchart TB
 | Global horizontal layers such as all routes, all services, all repositories | Familiar and initially simple | A feature change touches many distant directories | Similar runtime cost | Becomes harder to navigate as routes grow | Easy to describe layers but harder to demonstrate ownership |
 | Hexagonal architecture with many ports/adapters | Strong substitution boundaries | Too many interfaces for a small service | Indirection is minor but mock-heavy designs can hide SQL behavior | Highest abstraction burden | Useful vocabulary, but can look ceremonial without multiple adapters |
 
-**PROPOSED — not approved:** use Fastify and organize by feature with a small route → service → repository flow. Share only cross-cutting infrastructure: configuration, database pool/transactions, errors, logging, and the validated filter/predicate model. Repositories must not depend on HTTP request/reply objects. Entry-level batch validation stays in application logic so one invalid log cannot cause a framework schema to reject valid siblings.
+**ACCEPTED — 2026-08-08:** use Fastify and organize by feature with a small route → service → repository flow. Share only cross-cutting infrastructure: configuration, database pool/transactions, errors, logging, and the validated filter/predicate model. Repositories must not depend on HTTP request/reply objects. Entry-level batch validation stays in application logic so one invalid log cannot cause a framework schema to reject valid siblings.
 
 **References:** `CORE-001`, `SEC-001`, `SEC-003`, `CI-001`; `EDGE-QRY-019`, `EDGE-BAT-009`.
 
@@ -140,7 +141,9 @@ sequenceDiagram
 | Accept into an in-memory queue and write later | Very low apparent response latency | Loses accepted data on crash and violates success semantics | Inflates throughput numbers without durable work | Requires retry/state machinery to become correct | Weak answer because success would not mean committed data |
 | One database statement per log | Easiest SQL | Excessive round trips and transaction overhead | Unlikely to reach 15,000 logs/sec | Simple code, poor system design | Important anti-pattern to explain |
 
-**PROPOSED — not approved:** validate the whole request in memory once, retain original rejection indexes, transform only valid entries, and perform set-based insertion. If an accepted set is internally chunked, execute all chunks in one transaction and respond only after commit. Database failure produces no accepted success.
+**ACCEPTED — 2026-08-08:** validate the whole request in memory once, retain original rejection indexes, transform only valid entries, and perform set-based insertion. If an accepted set is internally chunked, execute all chunks in one transaction and respond only after commit. Database failure produces no accepted success.
+
+The accepted timestamp profile is extended date-time syntax with a mandatory timezone: `YYYY-MM-DDTHH:mm:ss[.fraction](Z|±HH:mm)`. Offsets and optional fractional seconds are accepted; date-only values and timestamps without a timezone are rejected. Validation must check real calendar/time values rather than trust permissive `Date` parsing, normalize stored/returned timestamps to UTC, capture `now` once per ingestion request, accept exactly five minutes in the future, and reject anything later.
 
 **References:** `ING-001`–`ING-015`, `ING-013`, `REL-001`, `PERF-001`, `PERF-005`; `EDGE-ING-004`–`EDGE-ING-008`, `EDGE-BAT-001`–`EDGE-BAT-011`.
 
@@ -177,7 +180,9 @@ sequenceDiagram
 | Build SQL directly inside handlers | Fewer files initially | Duplicated filters, security risk, difficult tests | Easy to generate unstable or non-indexable SQL | Low initial, high maintenance | Weak separation-of-concerns answer |
 | Generic ORM filter API | Less handwritten SQL | JSONB, bucketing, keyset, and plan control may become opaque | Generated SQL can add overhead or defeat indexes | Library complexity replaces explicit query complexity | Harder to justify exact plans in an interview |
 
-**PROPOSED — not approved:** parse all recognized values into a shared immutable filter model, decode/validate the cursor, construct parameterized predicates in a pure builder, fetch `limit + 1`, then build the next cursor from the last returned row. Unknown unrelated query parameters follow approved compatibility behavior and never enter SQL.
+**ACCEPTED — 2026-08-08:** parse all recognized values into a shared immutable filter model, decode/validate the cursor, construct parameterized predicates in a pure builder, fetch `limit + 1`, then build the next cursor from the last returned row. Unknown unrelated query parameters follow approved compatibility behavior and never enter SQL.
+
+Duplicate scalar parameters return `400`, even when values are identical. Repeated identical `attr.<key>` filters also return `400`; distinct attribute keys combine with logical `AND`. Empty `q` is a no-op normalized identically to absent `q`, including cursor fingerprinting. Parse `limit` as a strict base-10 integer with minimum `1`, default `100`, and maximum `1000`.
 
 **References:** `QRY-001`–`QRY-018`, `SEC-001`, `SEC-002`; `EDGE-QRY-001`–`EDGE-QRY-020`, `EDGE-CUR-001`–`EDGE-CUR-008`.
 
@@ -221,9 +226,9 @@ sequenceDiagram
 | `date_trunc` plus arithmetic for multi-minute buckets | Familiar for hour/day truncation | Five-minute alignment requires extra arithmetic, and timezone behavior is easier to make inconsistent | Also plausible, but generates more expression variants to inspect | Moderate because each bucket needs separate reasoning | Useful comparison showing why `date_trunc` alone does not express every required bucket |
 | Application-side bucketing | Full language-level control | Transfers rows out of PostgreSQL and duplicates grouping work | Increases data transfer and application CPU under the 0.5 CPU limit | Highest request-path complexity | A poor fit when PostgreSQL can aggregate directly |
 
-**PROPOSED — not approved:** start with direct PostgreSQL aggregation using strict bucket/group maps and the same filter builder as `GET /logs`. Use PostgreSQL `date_bin` with PostgreSQL 16 as the compatibility baseline and pin the exact supported 16.x container tag or digest during Stage 2. Use the fixed origin `TIMESTAMPTZ '1970-01-01 00:00:00+00'`. Map only `1m`, `5m`, `1h`, and `1d` to trusted interval expressions; no client interval text enters SQL.
+**ACCEPTED — 2026-08-08:** start with direct PostgreSQL aggregation using strict bucket/group maps and the same filter builder as `GET /logs`. Use PostgreSQL `date_bin` with PostgreSQL 16 as the compatibility baseline and pin the exact supported 16.x container tag or digest during Stage 2. Use the fixed origin `TIMESTAMPTZ '1970-01-01 00:00:00+00'`. Map only `1m`, `5m`, `1h`, and `1d` to trusted interval expressions; no client interval text enters SQL.
 
-Every bucket represents the half-open interval `[start, start + bucket)`: an event exactly at `start` belongs to that bucket, and an event exactly at the next boundary belongs to the next bucket. Set the database/session timezone to UTC and serialize bucket starts as UTC timestamps. Equal `since`/`until` returns an empty array, and absent buckets remain omitted. Convert bigint counts to JSON numbers only under the approved count-safety policy. Consider rollups only after measured evidence shows the required p95 cannot be met safely.
+Every bucket represents the half-open interval `[start, start + bucket)`: an event exactly at `start` belongs to that bucket, and an event exactly at the next boundary belongs to the next bucket. Set the database/session timezone to UTC and serialize bucket starts as UTC timestamps. Equal `since`/`until` returns an empty array, and absent buckets remain omitted. When grouped, order by bucket start ascending and then group value ascending. Convert PostgreSQL bigint counts to JSON numbers only within JavaScript's safe-integer range; an unsafe count maps to a generic internal error rather than losing precision. Consider rollups only after measured evidence shows the required p95 cannot be met safely.
 
 Validation must cover all four interval mappings, the fixed origin, events immediately before/on/after boundaries, equivalent timestamp offsets, UTC serialization, day boundaries, and daylight-saving transitions in non-UTC client offsets. Plans and latency remain later evidence, not claims here.
 
@@ -254,9 +259,9 @@ Validation must cover all four interval mappings, the fixed origin, events immed
 | Range-partitioned `logs` parent by event timestamp | Fast whole-partition retention, pruning for bounded ranges, smaller local indexes | More DDL, default-partition handling, unique constraints must include partition key | Can reduce scanned data and retention disruption; adds planning/routing overhead | Moderate operational complexity | Strong discussion of pruning, retention, and composite uniqueness |
 | EAV-centered schema with a log row plus attribute rows | Arbitrary keys become relational rows | Row explosion, joins, multi-row durability, complex response reconstruction | High write amplification and join cost at ingest scale | Highest schema/query complexity | Useful alternative to explain, but poor fit for this workload |
 
-**PROPOSED — not approved:** use a timestamp-range-partitioned logical log table with a safe default partition. Proposed columns are `timestamp TIMESTAMPTZ`, application-generated `id UUID`, constrained `level TEXT`, literal-non-empty `service TEXT`, literal-non-empty `message TEXT`, `attributes JSONB`, `attributes_search JSONB`, and `created_at TIMESTAMPTZ`. The exact DDL, constraints, partition bounds, and defaults require ADR approval and integration tests.
+**ACCEPTED — 2026-08-08:** use a timestamp-range-partitioned logical log table with a safe default partition. Baseline columns are `timestamp TIMESTAMPTZ`, application-generated `id UUID`, constrained `level TEXT`, literal-non-empty `service TEXT`, literal-non-empty `message TEXT`, `attributes JSONB`, `attributes_search JSONB`, and `created_at TIMESTAMPTZ`. Exact DDL spellings, constraint names, and physical measurements remain Stage 2 work.
 
-This proposal intentionally does not claim partitioning is faster. Its primary reason is bounded retention; query benefits require `EXPLAIN ANALYZE` evidence.
+This accepted choice does not claim partitioning is faster. Its primary reason is bounded retention; query benefits require `EXPLAIN ANALYZE` evidence.
 
 **References:** `CORE-002`, `ING-003`–`ING-008`, `QRY-005`, `QRY-010`–`QRY-012`, `RET-001`–`RET-003`, `PERF-004`; `EDGE-ATTR-010`, `EDGE-ATTR-012`, `EDGE-RET-006`.
 
@@ -271,9 +276,9 @@ This proposal intentionally does not claim partitioning is faster. Its primary r
 | EAV attribute table | Relational key/value indexes and statistics | Multiple rows per log, joins, cascades, and type reconstruction | Significant write amplification and more random I/O | High | Good normalized-design comparison, weak throughput fit |
 | Generated columns for selected keys | Excellent performance for known hot keys | Cannot cover arbitrary future keys without schema changes | Fast targeted queries, no generic solution | Operational schema churn | Appropriate only after stable production query evidence |
 
-**PROPOSED — not approved:** store original attributes in `attributes` and a second object in `attributes_search` where strings remain unchanged, booleans become lowercase `"true"`/`"false"`, and finite numbers use one documented canonical number spelling. Query with a parameterized JSONB containment value rather than interpolating keys or values. Normalize missing attributes to `{}` in both persistence and response mapping. The exact numeric canonicalization and behavior for a JSON number outside JavaScript's safe/finite range remain approval and compatibility-test questions; they must not be left to accidental parser behavior.
+**ACCEPTED — 2026-08-08:** store original attributes in `attributes` and a second object in `attributes_search`. Strings remain unchanged, booleans become lowercase `"true"`/`"false"`, and finite JavaScript numeric values use JSON/ECMAScript number serialization with negative zero canonicalized as `"0"`. Reject non-finite parsed results such as overflow to infinity, preserve accepted response values as JSON numbers, and document IEEE-754 precision limitations. Query with a parameterized JSONB containment value rather than interpolating keys or values. Normalize missing attributes to `{}` in both persistence and response mapping.
 
-**PROPOSED attribute-key safety:** accept and preserve an empty ingestion key because the company contract restricts attribute values but establishes no key restriction. Accept non-empty Unicode keys exactly as supplied, without silent normalization, and safely accept JavaScript-sensitive keys such as `__proto__` and `constructor` by iterating own properties and using null-prototype/internal-safe representations. Ingestion-key validity and query-parameter grammar are separate concerns: under the current proposal, the recognized query name `attr.` still lacks the required `<key>` segment and returns `400`, so an empty stored key is not addressable through that syntax unless a later decision explicitly changes `EDGE-QRY-004`. This proposes a compatibility-safe resolution for `DEC-012` but remains unapproved.
+**ACCEPTED attribute-key safety — 2026-08-08:** accept and preserve an empty ingestion key because the company contract restricts attribute values but establishes no key restriction. Accept non-empty Unicode keys exactly as supplied, without silent normalization, and safely accept JavaScript-sensitive keys such as `__proto__` and `constructor` by iterating own properties and using null-prototype/internal-safe representations. Ingestion-key validity and query-parameter grammar are separate: the recognized query name `attr.` lacks the required `<key>` segment and returns `400`, so an empty stored key is not addressable through that syntax.
 
 **References:** `ING-006`–`ING-008`, `QRY-005`, `QRY-006`, `QRY-012`, `SEC-001`; `EDGE-ATTR-001`–`EDGE-ATTR-012`, especially `EDGE-ATTR-007`–`EDGE-ATTR-010`; `EDGE-QRY-004`; `DEC-012`.
 
@@ -287,7 +292,7 @@ This proposal intentionally does not claim partitioning is faster. Its primary r
 | Application-generated UUID v7 | Time-ordered locality and available before insert | Requires a trusted implementation/dependency and careful timestamp behavior | Better B-tree locality in some layouts | Moderate | Modern choice with a richer trade-off discussion |
 | Database sequence/bigint | Compact, ordered, database-guaranteed sequence values | Harder to prepare IDs before bulk insert; sequential IDs expose volume; partitioned uniqueness needs care | Small, cache-friendly indexes and cheap comparison | Moderate with partitioning/return mapping | Strong relational choice but less opaque |
 
-**PROPOSED — not approved:** use application-generated UUID v4 values and order by `(timestamp DESC, id DESC)`. On a timestamp-partitioned table, enforce partition-compatible uniqueness on `(timestamp, id)` and treat UUID collision prevention as an application-generation invariant backed by tests. UUID generation cost and index size must be measured before final acceptance.
+**ACCEPTED — 2026-08-08:** use application-generated UUID v4 values and order by `(timestamp DESC, id DESC)`. On a timestamp-partitioned table, enforce partition-compatible uniqueness on `(timestamp, id)` and treat UUID collision prevention as an application-generation invariant backed by tests. UUID generation cost and index size remain implementation measurements.
 
 The keyset continuation predicate must use the same tuple: rows after a cursor satisfy `(timestamp, id) < (cursor_timestamp, cursor_id)` under descending order.
 
@@ -303,11 +308,11 @@ The keyset continuation predicate must use the same tuple: rows after a cursor s
 | HMAC-signed stateless cursor | Detects tampering before parsing values | Requires stable secret configuration/rotation and adds a feature not required by the contract | Small CPU cost; no DB lookup | Moderate | Demonstrates integrity controls but raises secret-lifecycle questions |
 | Server-side cursor token stored in PostgreSQL/cache | Can enforce snapshot-like state and revoke tokens | Stateful cleanup, extra reads/writes, expiry semantics | Adds a lookup per page and storage contention | Highest | Usually unjustified for ordinary keyset pagination |
 
-**PROPOSED — not approved:** use a versioned base64url JSON cursor containing the last timestamp, UUID, and a SHA-256 fingerprint of a canonical normalized-filter object. The fingerprint includes normalized `service`, `level`, `since`, `until`, `q`, the sorted resolved `attr.<key>` filters, and a cursor-semantics/sort version. It excludes ignored unknown parameters, the cursor itself, and `limit`; excluding `limit` intentionally lets a client change page size without changing the result set or ordering.
+**ACCEPTED — 2026-08-08:** use a versioned base64url JSON cursor containing the last timestamp, UUID, and a SHA-256 fingerprint of a canonical normalized-filter object. The fingerprint includes normalized `service`, `level`, `since`, `until`, `q`, the sorted resolved `attr.<key>` filters, and a cursor-semantics/sort version. It excludes ignored unknown parameters, the cursor itself, and `limit`; excluding `limit` intentionally lets a client change page size without changing the result set or ordering.
 
 Validate the encoding, exact object shape, version, timestamp, UUID, and equality between the embedded fingerprint and the server-computed fingerprint for the current request. The fingerprint prevents accidental reuse with different normalized filters. It does **not** authenticate the timestamp or UUID position fields, because an unsigned cursor has no secret-backed integrity. A client that makes a structurally valid position change may receive a different valid continuation page; the cursor is pagination state, not an authorization boundary. Malformed or incompatible values return `400`.
 
-**PROPOSED concurrent behavior:** use read-committed keyset continuation rather than a snapshot. Newer rows inserted ahead of the cursor may not appear in later pages; rows deleted by retention may disappear. The service guarantees deterministic continuation among rows that still exist, not a frozen multi-request snapshot.
+**ACCEPTED concurrent behavior — 2026-08-08:** use read-committed keyset continuation rather than a snapshot. Newer rows inserted ahead of the cursor may not appear in later pages; rows deleted by retention may disappear. The service guarantees deterministic continuation among rows that still exist, not a frozen multi-request snapshot.
 
 Cursor validation gates cover malformed base64url, malformed JSON, wrong version, wrong shape, invalid timestamp/UUID, normalized-filter mismatch, and the documented acceptance behavior for a structurally valid changed position. Tests must not claim that unsigned-cursor tampering is universally detectable.
 
@@ -323,7 +328,7 @@ Cursor validation gates cover malformed base64url, malformed JSON, wrong version
 | Minimal baseline plus evidence-gated indexes | Protects write path and isolates each index's value | Some filters may initially scan until experiments are completed | Enables clean before/after ingestion and query comparisons | Requires disciplined benchmark stages | Strong explanation of query-pattern-driven indexing |
 | One very wide composite index | Can cover one chosen filter order | Freely combinable filters do not share one leading-column order | Often unused when leading columns are absent | Appears simple but is brittle | Good example of why composite order matters |
 
-**PROPOSED — not approved baseline:**
+**ACCEPTED BASELINE — 2026-08-08:**
 
 1. Partition-compatible primary/unique B-tree on `(timestamp, id)`, scanned backward for `(timestamp DESC, id DESC)` range order and cursor pagination; do not create a duplicate index when the constraint already supplies it.
 2. B-tree on `(service, timestamp DESC, id DESC)` for exact service plus recent/range queries.
@@ -331,7 +336,7 @@ Cursor validation gates cover malformed base64url, malformed JSON, wrong version
 4. GIN `jsonb_path_ops` on `attributes_search` only after measuring containment queries and ingestion cost.
 5. Trigram index on a case-folded message expression only after measuring literal substring queries and ingestion cost.
 
-The first two are the proposed initial schema baseline. Items 3–5 are explicit experiments, not pre-approved indexes. PostgreSQL may combine indexes with bitmap scans, but every retained index needs `EXPLAIN ANALYZE` and throughput evidence.
+The first two are the accepted initial schema baseline. Items 3–5 are explicit experiments, not accepted initial indexes. PostgreSQL may combine indexes with bitmap scans, but every retained index needs `EXPLAIN ANALYZE` and throughput evidence.
 
 **References:** `QRY-001`–`QRY-010`, `AGG-004`, `PERF-001`–`PERF-004`, `SEC-001`; `EDGE-QRY-005`, `EDGE-QRY-009`, `EDGE-QRY-019`, `EDGE-ATTR-012`.
 
@@ -345,9 +350,9 @@ The first two are the proposed initial schema baseline. Items 3–5 are explicit
 | Daily timestamp partitions | Roughly one partition per day, precise retention drops, strong time pruning | Startup/DDL/default-partition logic and partition-aware constraints | Smaller indexes and cheap expiry; more planning and insert routing | Moderate | Rich discussion of pruning and operational retention |
 | Monthly timestamp partitions | Few partitions and simple management | Retention granularity is coarse; partial-month cleanup still deletes | Low planning overhead but weaker retention isolation | Moderate-low | Shows that partition granularity follows retention behavior |
 
-**PROPOSED — not approved:** use daily range partitions on event timestamp, pre-create the configured retention window plus at least two future days, and keep a default partition for otherwise valid out-of-window timestamps. Readiness waits for required current/future partitions, but routine retention must not block readiness indefinitely. Partition preparation must explicitly detect rows in the default partition whose range is about to become a named partition and safely move or retain them before attachment; PostgreSQL must never discover this overlap accidentally during startup DDL.
+**ACCEPTED — 2026-08-08:** use daily range partitions on event timestamp, pre-create the configured retention window plus at least two future days, and keep a default partition for otherwise valid out-of-window timestamps. Readiness waits for required current/future partitions, but routine retention must not block readiness indefinitely. Partition preparation must explicitly detect rows in the default partition whose range is about to become a named partition and safely move or retain them before attachment; PostgreSQL must never discover this overlap accidentally during startup DDL.
 
-At roughly one month of data this produces a manageable number of partitions. The proposal must be reversed if migration/startup, planning, or insertion measurements show it harms the required workload more than bounded deletion would.
+At roughly one month of data this produces a bounded partition count. If migration/startup, planning, or insertion measurements show unacceptable harm, a later evidence-backed ADR may supersede this baseline.
 
 **References:** `RET-001`–`RET-003`, `HLT-001`, `HLT-002`, `PERF-002`–`PERF-004`; `EDGE-RET-003`, `EDGE-RET-004`, `EDGE-RET-006`, `EDGE-ATTR-012`.
 
@@ -361,9 +366,9 @@ At roughly one month of data this produces a manageable number of partitions. Th
 | PostgreSQL scheduler extension | Cleanup stays near data | Extension/preload availability and Docker configuration become requirements | Avoids app timers but uses database CPU | Moderate operational coupling | Requires explaining extension deployment and database job visibility |
 | Separate cron/worker container | Independent resources and lifecycle | Extra service, coordination, and zero-config startup surface | Can isolate CPU, but total allowed resources are unclear | Highest for this project | More operationally realistic, but likely unnecessary |
 
-**PROPOSED — not approved:** use an in-process coordinator that obtains a PostgreSQL advisory lock, creates future partitions, drops fully expired daily partitions individually, and deletes expired default-partition rows in bounded committed batches. It records duration, removed partitions/rows, and failures. Shutdown cancels future work but does not corrupt an active database transaction.
+**ACCEPTED — 2026-08-08:** use an in-process coordinator that obtains a PostgreSQL advisory lock, creates future partitions, drops fully expired daily partitions individually, and deletes expired default-partition rows in bounded committed batches. It records duration, removed partitions/rows, and failures. Shutdown cancels future work but does not corrupt an active database transaction.
 
-**PROPOSED retention semantics:** accept otherwise valid old logs because the ingestion contract has no lower timestamp bound; they are immediately eligible for retention. Define expired as `timestamp < cutoff`; a timestamp exactly equal to the cutoff remains until a later run.
+**ACCEPTED retention semantics — 2026-08-08:** accept otherwise valid old logs because the ingestion contract has no lower timestamp bound; they are immediately eligible for retention. Define expired as `timestamp < cutoff`; a timestamp exactly equal to the cutoff remains until a later run.
 
 **References:** `RET-001`–`RET-003`, `REL-001`, `PERF-003`; `EDGE-VAL-012`, `EDGE-RET-001`–`EDGE-RET-006`, `DEC-015`.
 
@@ -378,7 +383,7 @@ At roughly one month of data this produces a manageable number of partitions. Th
 | PostgreSQL `COPY` stream | Usually highest raw ingest throughput | More complex JSON encoding, stream errors, transactions, and library support | Best candidate if `UNNEST` is proven insufficient | High | Excellent performance topic, but must justify added failure complexity |
 | One insert per row | Very simple | Round-trip and statement overhead per log | Not credible for the target | Low code complexity, high operational cost | Important rejected alternative |
 
-**PROPOSED — not approved:** begin with one typed-array `UNNEST` statement per measured internal chunk. If a request requires multiple chunks, wrap all accepted chunks in one transaction so the response represents one durable outcome. A starting experiment may compare chunks of 500, 1,000, and 5,000 rows; these are internal experiments, not public batch limits.
+**ACCEPTED — 2026-08-08:** begin with one typed-array `UNNEST` statement per measured internal chunk. If a request requires multiple chunks, wrap all accepted chunks in one transaction so the response represents one durable outcome. Comparing chunks such as 500, 1,000, and 5,000 is an implementation experiment, not a public batch limit or accepted optimum.
 
 Run a controlled `UNNEST` versus `COPY` experiment only if the durable `UNNEST` path misses the target or consumes excessive CPU/memory. Do not choose `COPY` based on reputation alone.
 
@@ -394,7 +399,7 @@ Run a controlled `UNNEST` versus `COPY` experiment only if the durable `UNNEST` 
 | Typed query builder such as Kysely | Compile-time assistance and composable queries | Dynamic JSONB/bucketing SQL still needs escape hatches | Usually small overhead but generated SQL must be inspected | Adds library concepts | Good production option, less direct SQL teaching |
 | Full ORM | Fast CRUD modeling and migrations | Poor fit for bulk arrays, partitions, arbitrary JSON filters, and plan work | Risk of inefficient SQL and object allocation | High framework surface | Harder to explain exact database behavior |
 
-**PROPOSED — not approved:** use `pg`, plain parameterized SQL, feature repositories, and a small pure predicate builder returning SQL text plus readonly values. Interpolate only fragments selected from hard-coded maps for bucket, grouping, and known columns. User-supplied attribute keys/values travel inside JSONB parameters, never as identifiers. Ordinary repositories use the restricted runtime database role proposed in Section 19, not the schema owner or PostgreSQL superuser.
+**ACCEPTED — 2026-08-08:** use `pg`, plain parameterized SQL, feature repositories, and a small pure predicate builder returning SQL text plus readonly values. Interpolate only fragments selected from hard-coded maps for bucket, grouping, and known columns. User-supplied attribute keys/values travel inside JSONB parameters, never as identifiers. Ordinary repositories use the restricted runtime database role in Section 19, not the schema owner or PostgreSQL superuser.
 
 **References:** `CORE-002`, `SEC-001`, `SEC-002`, `QRY-001`–`QRY-008`, `AGG-002`–`AGG-004`; `EDGE-QRY-004`, `EDGE-QRY-009`, `EDGE-QRY-019`, `EDGE-ATTR-007`–`EDGE-ATTR-009`.
 
@@ -408,7 +413,7 @@ Run a controlled `UNNEST` versus `COPY` experiment only if the durable `UNNEST` 
 | Lightweight migration library | Mature bookkeeping and CLI support | Dependency conventions may complicate container startup | Similar startup cost | Moderate library learning | Demonstrates pragmatic reuse |
 | Docker init scripts only | Simple first database initialization | Do not handle upgrades of an existing volume reliably | Fast first start, incomplete lifecycle | Low initially, unsafe later | Weak production migration story |
 
-**PROPOSED — not approved:** implement a small ordered SQL-file runner backed by a migration table, checksum, and PostgreSQL advisory lock. Apply one migration transaction at a time where the DDL permits it. The runner opens a short-lived connection as the non-superuser migration-owner role, performs migrations and required startup partition preparation, then closes that connection before ordinary traffic starts. The request pool connects separately as the restricted runtime role. A migration or privilege/readiness check failure keeps health non-ready. Use forward-fix migrations rather than automatic destructive rollback.
+**ACCEPTED — 2026-08-08:** implement a small ordered SQL-file runner backed by a migration table, checksum, and PostgreSQL advisory lock. Apply one migration transaction at a time where the DDL permits it. PostgreSQL Docker initialization may bootstrap roles on a fresh volume; application migrations remain responsible for schema evolution. The runner opens a short-lived connection as the non-superuser migration-owner role, performs migrations and required startup partition preparation, then closes that connection before ordinary traffic starts. The request pool connects separately as the restricted runtime role. A migration or privilege/readiness check failure keeps health non-ready. Use forward-fix migrations rather than automatic destructive rollback.
 
 **References:** `INF-001`, `HLT-001`, `HLT-002`, `DEL-002`, `SEC-001`; `EDGE-RET-004`, `EDGE-BAT-009`.
 
@@ -422,7 +427,7 @@ Run a controlled `UNNEST` versus `COPY` experiment only if the durable `UNNEST` 
 | Separate ingestion and query pools | Can reserve capacity by workload | Doubles tuning knobs and can exceed useful DB concurrency | May protect ingestion, but can oversubscribe a one-CPU database | Moderate | Useful isolation discussion, probably premature |
 | PgBouncer sidecar | Efficient connection multiplexing | Extra container/configuration and transaction-mode caveats | Helpful at many clients, unnecessary for one app with a small pool | High for this scope | Production concept without evidence of need |
 
-**PROPOSED — not approved:** use one `pg` pool with a baseline maximum of four connections, then compare 2, 4, and 8 under the required workload. Migrations run before traffic using a dedicated acquired client; retention uses the same pool and a non-blocking advisory-lock attempt. Export pool wait/active/idle observations without high-cardinality labels.
+**ACCEPTED — 2026-08-08:** use one `pg` pool with a starting maximum of four connections, then compare 2, 4, and 8 under the required workload. Four is the accepted starting configuration, not a measured optimum. Migrations run before traffic using a dedicated acquired client; retention uses the same pool and a non-blocking advisory-lock attempt. Export pool wait/active/idle observations without high-cardinality labels.
 
 The one-CPU PostgreSQL limit means excess connections can increase context switching and latency. The target is sufficient concurrency for one aggregation request plus batched writes, not maximum connection count.
 
@@ -453,7 +458,7 @@ flowchart TB
 | Separate migration container plus app and PostgreSQL | Isolates migration lifecycle | Compose completion/race behavior and another service to explain | Startup-only overhead | Moderate | Common production pattern, less necessary here |
 | Add queue/cache/connection-proxy containers | Specialized capabilities | More resources, health dependencies, and failure modes | Can exceed constraints without solving one-CPU DB limit | High | Over-engineering without evidence |
 
-**PROPOSED — not approved:** use a pinned Node.js LTS multi-stage image, non-root runtime user, production-only dependencies, one application process, and one PostgreSQL 16 service with a persistent volume; Stage 2 pins exact supported image tags or digests. Compose maps `8080:8080`, supplies safe built-in local-development/grading credentials for bootstrap, migration-owner, and runtime roles so no environment file is required, configures health checks, and expresses target resource limits where supported. These public built-in defaults are not production secrets and must be overrideable without changing the zero-configuration graded path. The application never uses the PostgreSQL superuser for requests. It retries database connection, runs migrations/preparation with the owner credential, closes that connection, verifies the runtime role and required permissions, then listens/reports ready. Graceful SIGTERM stops new traffic, drains in-flight requests within a deadline, cancels future retention work, and closes the runtime pool.
+**ACCEPTED — 2026-08-08:** use a pinned Node.js LTS multi-stage image, non-root runtime user, production-only dependencies, one application process, and one PostgreSQL 16 service with a persistent volume; Stage 2 pins exact supported image tags or digests. Compose maps `8080:8080`, supplies safe built-in local-development/grading credentials for bootstrap, migration-owner, and runtime roles so no environment file is required, configures health checks, and expresses target resource limits where supported. These public built-in defaults are not production secrets and must be overrideable without changing the zero-configuration graded path. The application never uses the PostgreSQL superuser for requests. It retries database connection, runs migrations/preparation with the owner credential, closes that connection, verifies the runtime role and required permissions, then listens/reports ready. Graceful SIGTERM stops new traffic, drains in-flight requests within a deadline, cancels future retention work, and closes the runtime pool.
 
 **References:** `INF-001`–`INF-003`, `HLT-001`, `HLT-002`, `DEL-002`, `OPT-002`; `EDGE-OPT-001`, `EDGE-BAT-011`, `EDGE-RET-005`.
 
@@ -467,9 +472,9 @@ flowchart TB
 | Route-local `try/catch` responses | Quick for a few routes | Duplicated behavior, leaks, inconsistent status codes | Negligible runtime difference | Low initially, high maintenance | Weak reliability story |
 | Return result objects for every operation | Explicit failures without exceptions | Verbose across async database boundaries | Small allocation cost | High ceremony | Useful concept, but can obscure ordinary exceptional failures |
 
-**PROPOSED — not approved:** define typed client/validation errors, readiness/unavailable errors, and internal/database errors. A central mapper returns required `400` shapes for invalid queries, route-specific ingestion `400` behavior, `503` with a stable public error and `Retry-After` for temporary database unavailability, and `500` for unexpected bugs. Log internal cause and request ID, never stack traces, SQL text with secrets, credentials, or raw database messages to clients.
+**ACCEPTED — 2026-08-08:** define typed client/validation errors, readiness/unavailable errors, and internal/database errors. A central mapper returns required `400` shapes for invalid queries, route-specific ingestion `400` behavior, `503` with a stable public error and `Retry-After` for confidently transient database unavailability, and `500` for unexpected/internal failures. Log internal cause and request ID, never stack traces, SQL text with values, credentials, or raw database messages to clients.
 
-For `POST /logs`, a database failure returns no accepted-success body. This is the proposed resolution of `DEC-016`; exact wording remains approval-dependent.
+For `POST /logs`, a database failure returns no accepted-success body. This is the accepted resolution of `DEC-016`; public wording remains generic and redacted.
 
 **References:** `ING-012`, `ING-013`, `QRY-015`, `AGG-008`, `SEC-003`, `REL-002`; `EDGE-BAT-005`–`EDGE-BAT-009`, `EDGE-CUR-001`.
 
@@ -515,13 +520,13 @@ flowchart LR
 | Separate migration-owner and restricted runtime roles | Ordinary traffic cannot perform arbitrary schema changes; permissions are reviewable | Requires role/grant migrations, two credentials, and a narrow retention-privilege design | Privilege checks are negligible; narrow retention functions add only task-level overhead | Moderate startup and migration complexity | Demonstrates practical least privilege and ownership semantics |
 | PostgreSQL superuser for the application | Avoids permission failures | Gives request traffic cluster-wide administrative power | No justified performance benefit | Simple initially, unacceptable security exposure | Not defensible for this service |
 
-**PROPOSED — not approved privilege model:** PostgreSQL bootstrap initialization creates a non-superuser migration-owner login and a separate non-superuser runtime login. The owner owns the application schema, migration history, tables, partitions, and narrowly scoped retention routines. Startup migrations and required partition preparation use a short-lived owner connection. The ordinary application pool uses only the runtime role with `CONNECT`, schema `USAGE`, required `SELECT`/`INSERT`, and only the mutation permissions needed by approved ingestion/retention behavior.
+**ACCEPTED privilege model — 2026-08-08:** PostgreSQL bootstrap initialization creates a non-superuser migration-owner login and a separate non-superuser runtime login. The owner owns the application schema, migration history, tables, partitions, and narrowly scoped retention routines. Startup migrations and required partition preparation use a short-lived owner connection. The ordinary application pool uses only the runtime role with `CONNECT`, schema `USAGE`, required `SELECT`/`INSERT`, and only the mutation permissions needed by approved ingestion/retention behavior.
 
 Because partition creation/drop normally requires ownership, ongoing retention should invoke tightly scoped owner-defined `SECURITY DEFINER` routines rather than grant the runtime role arbitrary DDL or owner membership. Such routines must pin a safe `search_path`, schema-qualify objects, validate inputs internally, revoke default `PUBLIC` execution, and grant `EXECUTE` only to the runtime role. Default-partition cleanup may use narrowly granted `DELETE` or the same routines. The custom migration runner creates and grants these objects; readiness verifies both schema state and a runtime-role connection/permission smoke check.
 
 Compose supplies distinct safe built-in credentials so plain `docker compose up` remains sufficient. Credentials are never logged or returned, and owner connections are closed before listening. The application process may still receive the startup owner credential, so role separation reduces database blast radius but does not provide complete security against full process compromise. Production secret injection and stronger process separation remain deployment concerns beyond the graded default.
 
-**PROPOSED — not approved controls:**
+**ACCEPTED controls — 2026-08-08:**
 
 - Parse network inputs from `unknown`; TypeScript types never replace runtime checks.
 - Parameterize service, level, times, attribute search objects, message search values, limits, and cursor-derived values.
@@ -561,7 +566,7 @@ flowchart TB
 | Mock database for most tests | Very fast and isolated | Mocks cannot validate SQL, JSONB, transactions, partitions, or plans | No reliable performance signal | Low runtime setup, high false confidence | Weak for a PostgreSQL-heavy project |
 | Only end-to-end tests | Realistic public behavior | Slow diagnosis and poor edge coverage | Expensive to run; hard to benchmark components | Low test architecture, high debugging cost | Cannot explain isolated validation/query-builder guarantees |
 
-**PROPOSED — not approved:** use Vitest for unit and integration orchestration; pure table-driven unit tests for validators/parsers/codecs/builders; real PostgreSQL integration tests for migrations/repositories/retention; black-box tests against Compose for the exact contract; explicit failure/security tests; and a separate TypeScript load generator for performance. Do not mock PostgreSQL behavior that the project is meant to demonstrate.
+**ACCEPTED — 2026-08-08:** use Vitest for unit and integration orchestration; pure table-driven unit tests for validators/parsers/codecs/builders; real PostgreSQL integration tests for migrations/repositories/retention; black-box tests against Compose for the exact contract; explicit failure/security tests; and a separate TypeScript load generator for performance. Do not mock PostgreSQL behavior that the project is meant to demonstrate.
 
 **References:** `CI-001`, `PERF-007`, `DEL-003`, all endpoint requirement groups; `EDGE-BAT-007`–`EDGE-BAT-011`, `EDGE-QRY-019`, `EDGE-CUR-001`–`EDGE-CUR-008`, `EDGE-RET-001`–`EDGE-RET-006`.
 
@@ -571,7 +576,7 @@ flowchart TB
 
 No number in this section is a measured result. Each item is a design hypothesis tied to a later benchmark.
 
-| Required target | Proposed architectural response | Required validation |
+| Required target | Accepted architectural response | Required validation |
 |---|---|---|
 | At least 15,000 logs/sec | Set-based `UNNEST`, internal chunk experiments, one transaction per accepted request, minimal initial indexes, low-volume structured logging | Sustained external load under exact limits; reconcile HTTP accepted total with PostgreSQL count |
 | Approximately 1,000,000 rows/month | Daily partitions, compact fixed columns, JSONB attributes, bounded partition count | Load/seed realistic distributions; inspect table/index sizes and plans |
@@ -589,7 +594,7 @@ No number in this section is a measured result. Each item is a design hypothesis
 | Add caching/rollups/queues before baseline | May improve selected metrics | Can hide correctness, add stale data, and consume limits | Unclear net effect without baseline | High | Looks like premature optimization |
 | Relax durability settings | Artificially high throughput | Violates data safety and project rules | Misleading numbers and data loss risk | Low configuration effort, unacceptable outcome | Disqualifying trade-off |
 
-**PROPOSED — not approved:** establish a correctness-first baseline under exact limits, then tune one variable at a time: chunk size, pool size, index set, GIN/trigram settings, partitioning, logging, and only then `COPY`. Keep PostgreSQL durability enabled. Record unsuccessful experiments.
+**ACCEPTED — 2026-08-08:** establish a correctness-first baseline under exact limits, then tune one variable at a time: chunk size, pool size, index set, GIN/trigram settings, partitioning, logging, and only then `COPY`. Keep PostgreSQL durability enabled. Record unsuccessful experiments. This accepts the validation method, not any throughput or latency result.
 
 **References:** `INF-003`, `PERF-001`–`PERF-007`, `REL-001`, `ING-013`, `RET-002`; `EDGE-BAT-010`, `EDGE-QRY-020`, `EDGE-ATTR-011`, `EDGE-RET-003`.
 
@@ -629,21 +634,22 @@ Measurement runs must record hypothesis, Git commit, configuration, database sta
 | Authentication/multi-tenancy | Security depth | Exact optional contract, migrations, CI matrix, and tenancy isolation | Adds request and database work | High | Valuable only after core is complete |
 | Rollups/live tail/alerts | Distinctive capabilities | New consistency and delivery semantics | Extra write/query load | High | Interesting, but risky under schedule |
 
-**PROPOSED — not approved:** after the core contract and load targets pass, choose at most two additions: bounded operational metrics first and a safe read-only diagnostics endpoint second. Measure metrics overhead; keep arbitrary values out of labels. Keep diagnostics disabled by default or inexpensive and additive. Do not select dashboard, auth, rollups, live tail, or alerts initially.
+**ACCEPTED — 2026-08-08:** defer optional features until the core contract and measured performance gates pass. If later authorized, choose at most two additions: bounded operational metrics first and a safe read-only diagnostics endpoint second. Measure metrics overhead; keep arbitrary values out of labels. Keep diagnostics disabled by default or inexpensive and additive. Do not select dashboard, auth, rollups, live tail, or alerts initially.
 
 **References:** `OPT-001`–`OPT-007`, `DOC-001`, `REL-001`, `DEL-003`; `EDGE-OPT-001`–`EDGE-OPT-005`.
 
 **Training links:** Learn HTTP Servers in TypeScript covers additive endpoints; Learn SQL covers safe catalog/statistics queries; Learn Docker covers process metrics; Learn HTTP Clients in TypeScript can consume diagnostics; optional auth connects HTTP credentials to database isolation only if later selected.
 
-## Proposed architecture summary
+## Accepted architecture summary
 
-**PROPOSED — not approved:**
+**ACCEPTED — 2026-08-08:**
 
 - One Fastify-based modular TypeScript application and one PostgreSQL database.
 - Feature modules with shared configuration, database, filters, errors, and logging.
 - Synchronous per-entry validation followed by durable set-based PostgreSQL ingestion.
 - Timestamp-daily partitioned logs with a default partition.
 - Original plus normalized-string JSONB attributes.
+- Accepted finite-number canonicalization uses JSON/ECMAScript serialization, canonicalizes negative zero as `"0"`, rejects non-finite parsed results, and documents IEEE-754 limits.
 - Application-generated UUID v4 IDs and `(timestamp DESC, id DESC)` ordering.
 - Versioned base64url keyset cursor with normalized-filter fingerprint.
 - UTC `date_bin` aggregation with a fixed epoch origin and half-open buckets.
@@ -653,28 +659,29 @@ Measurement runs must record hypothesis, Git commit, configuration, database sta
 - Plain parameterized SQL via `pg`, pure predicate builders, and feature repositories.
 - Ordered SQL migrations with history/checksums and an advisory lock.
 - Separate non-superuser migration-owner and restricted runtime database roles.
+- Fresh-volume PostgreSQL initialization may bootstrap roles; application migrations own schema evolution, and hardened narrow `SECURITY DEFINER` routines expose owner-required retention operations.
 - One pool starting at four connections, then measured at 2/4/8.
 - Two-container Compose runtime with readiness after DB/migrations/preparation.
 - Typed errors, centralized redaction, `503` for temporary database unavailability.
 - Unit, real-PostgreSQL integration, black-box contract, failure/security, and load-test layers.
 - Optional metrics and diagnostics only after the measured core succeeds.
 
-## Proposed ADR list
+## Accepted ADR list
 
-| ADR | Topic | Status |
-|---|---|---|
-| `0001` | HTTP framework and module boundaries | PROPOSED |
-| `0002` | PostgreSQL access and safe query construction | PROPOSED |
-| `0003` | Log schema and attribute storage | PROPOSED |
-| `0004` | Identifiers, deterministic ordering, and cursor semantics | PROPOSED |
-| `0005` | Evidence-gated indexing strategy | PROPOSED |
-| `0006` | Partitioning and retention architecture | PROPOSED |
-| `0007` | Bulk ingestion and connection pooling | PROPOSED |
-| `0008` | Migrations and readiness | PROPOSED |
-| `0009` | Docker runtime and shutdown | PROPOSED |
-| `0010` | Error handling and security boundaries | PROPOSED |
-| `0011` | Testing and performance validation | PROPOSED |
-| `0012` | Optional additions posture | PROPOSED |
+| ADR | Topic | Status | Decision date |
+|---|---|---|---|
+| `0001` | HTTP framework and module boundaries | ACCEPTED | `2026-08-08` |
+| `0002` | PostgreSQL access and safe query construction | ACCEPTED | `2026-08-08` |
+| `0003` | Log schema and attribute storage | ACCEPTED | `2026-08-08` |
+| `0004` | Identifiers, deterministic ordering, and cursor semantics | ACCEPTED | `2026-08-08` |
+| `0005` | Evidence-gated indexing strategy | ACCEPTED | `2026-08-08` |
+| `0006` | Partitioning and retention architecture | ACCEPTED | `2026-08-08` |
+| `0007` | Bulk ingestion and connection pooling | ACCEPTED | `2026-08-08` |
+| `0008` | Migrations and readiness | ACCEPTED | `2026-08-08` |
+| `0009` | Docker runtime and shutdown | ACCEPTED | `2026-08-08` |
+| `0010` | Error handling and security boundaries | ACCEPTED | `2026-08-08` |
+| `0011` | Testing and performance validation | ACCEPTED | `2026-08-08` |
+| `0012` | Optional additions posture | ACCEPTED | `2026-08-08` |
 
 ## Important trade-offs
 
@@ -689,7 +696,7 @@ Measurement runs must record hypothesis, Git commit, configuration, database sta
 
 ## Risks
 
-- The proposed partitioning/dual-JSONB/index combination may create enough write amplification to miss 15,000 logs/sec.
+- The accepted partitioning/dual-JSONB/index combination may create enough write amplification to miss 15,000 logs/sec.
 - The app's 0.5 CPU may be consumed by JSON parsing, normalization, UUID generation, or PostgreSQL parameter encoding before the database saturates.
 - Direct aggregation may exceed p95 during ingestion without a carefully bounded primary query and index plan.
 - A default partition can accumulate old data if retention fails.
@@ -697,30 +704,29 @@ Measurement runs must record hypothesis, Git commit, configuration, database sta
 - Liberal arbitrary attribute keys require careful JavaScript object handling.
 - Numeric attribute canonicalization must avoid accidental precision, overflow, or query-string mismatches.
 - An unsigned cursor permits structurally valid position changes; this is acceptable only because cursors are not authorization boundaries.
-- Incorrect `SECURITY DEFINER` ownership, `search_path`, or grants could undermine the proposed database-role separation.
+- Incorrect `SECURITY DEFINER` ownership, `search_path`, or grants could undermine the accepted database-role separation.
 - A four-connection pool is only a starting hypothesis.
 - Framework body parsing holds the JSON batch in memory; very large valid batches require measured protections without breaking the load generator.
 - The external load generator itself can cap observed throughput.
 
-## Open questions requiring approval
+## Accepted decision summary
 
-1. Approve Fastify and the feature-module modular monolith?
-2. Approve daily timestamp partitions, or prefer an unpartitioned first version with bounded deletion?
-3. Approve dual original/search JSONB attributes?
-4. Approve accepting and preserving empty ingestion attribute keys while keeping bare query parameter `attr.` invalid, and safely accept non-empty Unicode and JavaScript-sensitive keys?
-5. Approve UUID v4 and the `(timestamp, id)` order?
-6. Approve an unsigned versioned cursor whose fingerprint includes normalized filters/sort version, excludes `limit`, and does not authenticate position fields, with documented read-committed continuation semantics?
-7. Approve the two-index initial baseline and evidence gates for level/GIN/trigram indexes?
-8. Approve old-log acceptance followed by retention eligibility, with `< cutoff` expiry?
-9. Approve `UNNEST` as the first bulk method and `COPY` as a later experiment?
-10. Approve plain `pg` SQL and a small custom migration runner?
-11. Approve pool max 4 as the initial measured setting?
-12. Approve `503` plus `Retry-After` for temporary database failures?
-13. Approve metrics and diagnostics as the only first optional candidates after core success?
-14. Approve the attribute-number string canonicalization and finite/safe-range compatibility policy after focused parser examples.
-15. Approve UTC `date_bin` with a fixed Unix-epoch origin and half-open bucket intervals on the pinned PostgreSQL 16 compatibility baseline?
-16. Approve separate non-superuser migration-owner/runtime roles and narrowly scoped retention routines?
-17. Resolve remaining Stage 0.1 decisions: ISO 8601 profile, duplicate query parameters, repeated attribute keys, empty `q`, minimum limit, and same-bucket group ordering.
+The reviewer/architect accepted the following on `2026-08-08`:
+
+1. Fastify modular monolith and feature-oriented route → service → repository boundaries.
+2. Plain parameterized `pg` SQL, shared predicate builders, and structural whitelists.
+3. Dual original/search JSONB attributes with prototype-safe arbitrary keys and the accepted finite-number canonicalization policy.
+4. UUID v4, `(timestamp DESC, id DESC)` ordering, and unsigned versioned filter-bound cursors with unauthenticated position fields.
+5. The time/ID and service/time/ID initial indexes; level, GIN, and trigram remain evidence-gated.
+6. Daily UTC partitions, default-partition overlap recovery, advisory-locked retention, old-log acceptance, and `< cutoff` expiry.
+7. `UNNEST` as the initial bulk method and a shared pool starting at four; `COPY`, chunk sizes, and 2/4/8 pool comparisons remain measurements.
+8. Ordered forward-fix migrations, PostgreSQL 16 compatibility, separate owner/runtime roles, and hardened narrow retention routines.
+9. UTC `date_bin` from the fixed epoch origin, half-open buckets, deterministic grouped ordering, and safe-count conversion.
+10. Typed centralized errors, redaction, generic `503`/`500` database failures, layered testing, and deferred optional features.
+11. The mandatory-timezone ISO profile, rejection of duplicate scalar and repeated same-key attribute filters, empty-`q` no-op behavior, and strict `limit` range/parsing.
+12. Read-committed keyset continuation without a multi-request snapshot guarantee.
+
+Architecture-sensitive implementation details still needing evidence include exact PostgreSQL/Node image tags or digests, migration DDL spellings, body/batch safety thresholds, pool/chunk optima, candidate indexes, shutdown timing, query plans, and every performance target. A later ADR may supersede a performance-sensitive accepted baseline only when documented measurements justify it.
 
 ## Interview questions and model answers
 
@@ -750,7 +756,7 @@ PostgreSQL has one CPU in the target environment. More connections create more r
 
 ### Why partition at only one million rows?
 
-The proposal is driven mainly by retention isolation, not the belief that one million rows requires partitioning for queries. Dropping a fully expired partition avoids large deletes and bloat. The extra planning and operational cost still needs measurement.
+The accepted choice is driven mainly by retention isolation, not the belief that one million rows requires partitioning for queries. Dropping a fully expired partition avoids large deletes and bloat. The extra planning and operational cost still needs measurement.
 
 ### How is SQL injection prevented when query structure is dynamic?
 
@@ -782,4 +788,4 @@ Migrations need ownership and DDL, but ordinary requests need only narrow data o
 6. **Build a Blog Aggregator in TypeScript:** repositories, idempotent startup work, scheduled retention, persistence failure handling.
 7. **Learn Docker:** multi-stage builds, Compose networks/volumes, health checks, resource limits, signals, and reproducible full-system testing.
 
-Before Stage 1, the student should be able to explain the proposed ingestion/query flows, the dual-JSONB trade-off, why indexes cost writes, how keyset pagination works, and why every performance statement still requires measurement.
+Before Stage 1, the student should be able to explain the accepted ingestion/query flows, the dual-JSONB trade-off, why indexes cost writes, how keyset pagination works, and why every performance statement still requires measurement.

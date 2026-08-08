@@ -1,8 +1,9 @@
 # ADR 0005 — Evidence-Gated Indexing
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
-- **Implementation and validation stages:** Stages 2, 6, and 9 after approval
+- **Implementation and validation stages:** Stages 2, 6, and 9 after explicit task authorization
 
 ## Context
 
@@ -16,9 +17,9 @@ Filters are freely combinable, while ingestion must sustain at least 15,000 logs
 | Minimal baseline plus controlled index experiments | Protects writes and yields clear before/after evidence | Some secondary filters initially scan |
 | One wide composite index | Simple inventory | Only helps queries matching its leading-column order |
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** initial indexes are:
+**ACCEPTED — 2026-08-08:** initial indexes are:
 
 1. the partition-compatible primary/unique `(timestamp, id)` B-tree, scanned backward for descending range order and keyset pagination, without a duplicate standalone index;
 2. `(service, timestamp DESC, id DESC)` for a likely primary exact dimension.
@@ -57,7 +58,6 @@ Add one material index at a time and retain it only when query/aggregation impro
 - Edge cases: `EDGE-QRY-005`, `EDGE-QRY-009`, `EDGE-ATTR-012`
 - Training: Learn SQL; Build a Blog Aggregator in TypeScript; Learn Docker
 
-## Approval questions
+## Acceptance record
 
-1. Approve the time/ID and service/time/ID initial baseline?
-2. Approve level, GIN, and trigram only as later evidence-gated experiments?
+The reviewer approved the time/ID and service/time/ID baseline on `2026-08-08`. Level, GIN, and trigram indexes remain measurement-gated experiments and are not accepted as initial indexes.

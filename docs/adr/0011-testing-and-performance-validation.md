@@ -1,6 +1,7 @@
 # ADR 0011 — Testing and Performance Validation
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
 - **Implementation stage:** Continuous, with performance gates in Stages 8–9
 
@@ -16,9 +17,9 @@ The project must provide meaningful CI and evidence for throughput, latency, fre
 | Real PostgreSQL integration plus black-box Compose tests | High contract and database confidence | Slower and requires deterministic lifecycle management |
 | One end-to-end suite for everything | Tests the assembled system | Slow diagnosis and poor coverage of boundary combinations |
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** use a layered test architecture:
+**ACCEPTED — 2026-08-08:** use a layered test architecture:
 
 1. pure unit and table-driven tests for validation, parsing, cursor codecs, error mapping, and safe query-plan construction;
 2. repository/integration tests against real PostgreSQL for migrations, SQL semantics, transactions, retention, indexes, and concurrency;
@@ -57,8 +58,6 @@ The benchmark records hardware/software environment, dataset generator and distr
 - Edge cases: all settled contract boundaries; especially `EDGE-BAT-008`, `EDGE-BAT-010`, `EDGE-QRY-020`, `EDGE-CUR-006`, `EDGE-RET-003`, `EDGE-RET-005`
 - Training: Learn TypeScript; Learn HTTP Clients in TypeScript; Build a Pokedex in TypeScript; Learn SQL; Build a Blog Aggregator in TypeScript; Learn HTTP Servers in TypeScript; Learn Docker
 
-## Approval questions
+## Acceptance record
 
-1. Approve the four-layer testing architecture and real-PostgreSQL integration requirement?
-2. Approve row reconciliation and concurrent ingestion/aggregation as non-negotiable benchmark validity checks?
-3. Approve retaining raw benchmark artifacts and explicitly documenting the execution environment?
+The reviewer approved the four-layer test architecture, real-PostgreSQL integration, row reconciliation, concurrent workload validation, and evidence-retention requirements on `2026-08-08`. No performance target is verified until later measurements exist.

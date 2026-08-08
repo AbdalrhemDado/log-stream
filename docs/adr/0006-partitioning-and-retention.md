@@ -1,8 +1,9 @@
 # ADR 0006 — Partitioning and Retention
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
-- **Implementation stage:** Stages 2 and 7 after approval
+- **Implementation stage:** Stages 2 and 7 after explicit task authorization
 
 ## Context
 
@@ -18,9 +19,9 @@ The service stores roughly one month of event-time data and needs configurable r
 
 Retention scheduling alternatives are an in-app worker with advisory locking, a PostgreSQL scheduler extension, and a separate worker container. The latter two add deployment requirements.
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** partition by event timestamp per UTC day. Pre-create the retention window and at least two future days; keep a default partition for valid out-of-window rows. Required partitions exist before readiness. Before attaching a missing daily partition, preparation must detect and safely handle any overlapping rows already routed to the default partition.
+**ACCEPTED — 2026-08-08:** partition by event timestamp per UTC day. Pre-create the retention window and at least two future days; keep a default partition for valid out-of-window rows. Required partitions exist before readiness. Before attaching a missing daily partition, preparation must detect and safely handle any overlapping rows already routed to the default partition.
 
 Use an in-process retention coordinator with a non-blocking PostgreSQL advisory lock. Drop fully expired partitions individually and delete expired default-partition rows in bounded committed batches. Define expired as `timestamp < cutoff`.
 
@@ -55,8 +56,6 @@ Accept otherwise valid old logs; they are immediately eligible for retention rat
 - Project decision: `DEC-015`
 - Training: Learn SQL; Build a Blog Aggregator in TypeScript; Learn TypeScript; Learn Docker
 
-## Approval questions
+## Acceptance record
 
-1. Approve daily partitions plus a default partition?
-2. Approve in-process advisory-locked retention?
-3. Approve old-log acceptance and `< cutoff` expiry semantics?
+The reviewer approved daily UTC partitions with a default partition, overlap recovery, advisory-locked retention, old-log acceptance, and `< cutoff` expiry semantics on `2026-08-08`.

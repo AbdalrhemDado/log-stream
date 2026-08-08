@@ -1,8 +1,9 @@
 # ADR 0004 — Identifiers, Deterministic Ordering, and Cursors
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
-- **Implementation stage:** Stage 5 after approval
+- **Implementation stage:** Stage 5 after explicit task authorization
 
 ## Context
 
@@ -18,9 +19,9 @@ Every returned log needs a unique ID. Results sort by timestamp descending with 
 
 Cursor alternatives are unsigned base64url JSON, HMAC-signed stateless data, and server-side stored cursor state. Signing authenticates cursor fields but adds secret lifecycle; server-side state adds a lookup and cleanup. Unsigned structural validation cannot prove that position fields were not changed.
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** generate UUID v4 in the application and order by `(timestamp DESC, id DESC)`. Encode a versioned base64url JSON cursor containing the last timestamp, ID, and SHA-256 fingerprint of a canonical normalized-filter object. The fingerprint includes normalized `service`, `level`, `since`, `until`, `q`, sorted resolved attribute filters, and a cursor-semantics/sort version. It excludes ignored unknown parameters, the cursor, and `limit`; omitting `limit` intentionally permits page-size changes without changing the result set or ordering.
+**ACCEPTED — 2026-08-08:** generate UUID v4 in the application and order by `(timestamp DESC, id DESC)`. Encode a versioned base64url JSON cursor containing the last timestamp, ID, and SHA-256 fingerprint of a canonical normalized-filter object. The fingerprint includes normalized `service`, `level`, `since`, `until`, `q`, sorted resolved attribute filters, and a cursor-semantics/sort version. It excludes ignored unknown parameters, the cursor, and `limit`; omitting `limit` intentionally permits page-size changes without changing the result set or ordering.
 
 Validate encoding, exact shape, version, timestamp, UUID, and filter-fingerprint equality. The fingerprint prevents accidental cursor reuse with different normalized filters but does not authenticate timestamp/ID position fields. A structurally valid changed position can therefore produce a different valid continuation page. This is acceptable only because the cursor is pagination state rather than an authorization boundary. Return `400` for malformed, incompatible, invalid-field, or filter-mismatched cursors.
 
@@ -58,8 +59,6 @@ Use read-committed keyset continuation, not a multi-request snapshot. Newer inse
 - Project decision: `DEC-014`
 - Training: Learn SQL; Learn TypeScript; Learn HTTP Clients in TypeScript
 
-## Approval questions
+## Acceptance record
 
-1. Approve UUID v4 rather than UUID v7 or bigint?
-2. Approve unsigned stateless cursors whose filter fingerprint excludes `limit` and does not authenticate position fields?
-3. Approve documented read-committed continuation rather than snapshot pagination?
+The reviewer approved UUID v4 ordering, unsigned filter-bound cursors with unauthenticated position fields, and documented read-committed continuation semantics on `2026-08-08`.

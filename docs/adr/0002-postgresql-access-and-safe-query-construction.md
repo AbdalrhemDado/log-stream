@@ -1,8 +1,9 @@
 # ADR 0002 — PostgreSQL Access and Safe Query Construction
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
-- **Implementation stages:** Stages 2, 4, 5, and 6 after approval
+- **Implementation stages:** Stages 2, 4, 5, and 6 after explicit task authorization
 
 ## Context
 
@@ -16,9 +17,9 @@ PostgreSQL must remain the read/write source of truth. The service needs bulk in
 | Typed query builder | Compile-time assistance and composability | Dynamic JSONB/bucketing still needs raw fragments; generated SQL requires inspection |
 | Full ORM | Productive for ordinary CRUD | Poor visibility/control for bulk arrays, partitions, JSONB, bucketing, and plans |
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** use `pg`, feature repositories, explicit transactions, and small pure SQL builders returning `{ text, values }`. Parameterize every user or cursor-derived value. Select bucket, group column, and other identifiers only through exhaustive hard-coded maps.
+**ACCEPTED — 2026-08-08:** use `pg`, feature repositories, explicit transactions, and small pure SQL builders returning `{ text, values }`. Parameterize every user or cursor-derived value. Select bucket, group column, and other identifiers only through exhaustive hard-coded maps.
 
 Attribute filters construct a safe one-key JSON object as a bound JSONB parameter. An empty ingestion attribute key remains valid and preserved, while bare `attr.` remains a separately invalid recognized query name because it has no `<key>` segment. Message substring patterns escape wildcard characters for literal semantics and remain bound values.
 
@@ -58,8 +59,6 @@ Ordinary repository traffic uses the restricted runtime role, never the PostgreS
 - Edge cases: `EDGE-QRY-004`, `EDGE-QRY-009`, `EDGE-QRY-019`, `EDGE-ATTR-007`–`EDGE-ATTR-009`, `EDGE-AGG-004`, `EDGE-AGG-005`, `EDGE-AGG-009`
 - Training: Learn SQL; Learn TypeScript; Learn HTTP Servers in TypeScript
 
-## Approval questions
+## Acceptance record
 
-1. Approve direct `pg` access rather than a query builder or ORM?
-2. Approve one shared pure predicate builder for list and aggregation filters?
-3. Approve pinned PostgreSQL 16-compatible `date_bin` bucketing with a fixed UTC epoch origin and half-open intervals?
+The reviewer approved direct `pg` access, shared pure predicate builders, and PostgreSQL 16-compatible UTC `date_bin` bucketing with the fixed epoch origin and half-open intervals on `2026-08-08`.

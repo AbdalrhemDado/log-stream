@@ -1,8 +1,9 @@
 # ADR 0010 — Error Handling and Security Boundaries
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
-- **Implementation stage:** Stages 1–7 after approval
+- **Implementation stage:** Stages 1–7 after explicit task authorization
 
 ## Context
 
@@ -16,15 +17,15 @@ The required API has precise client-error shapes, partial batch rejection semant
 | Typed application errors with one HTTP mapper | Consistent contract and testable redaction boundary | Requires a small error taxonomy and disciplined translation |
 | Expose framework/database errors in non-production mode | Fast local diagnosis | Risks mode-dependent contract drift and secret/internal leakage |
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** define typed, internal application errors and map them through one HTTP error boundary. Validation/parser/cursor errors map to documented `400` responses; unexpected defects map to a generic `500`; temporary database unavailability maps to a generic `503` with `Retry-After` only when the failure is confidently classified as transient. Partial invalid log entries remain successful batch-domain results when at least one valid entry is durably committed; they are not exceptions.
+**ACCEPTED — 2026-08-08:** define typed, internal application errors and map them through one HTTP error boundary. Validation/parser/cursor errors map to documented `400` responses; unexpected defects map to a generic `500`; temporary database unavailability maps to a generic `503` with `Retry-After` only when the failure is confidently classified as transient. Partial invalid log entries remain successful batch-domain results when at least one valid entry is durably committed; they are not exceptions.
 
 All user-supplied SQL values use PostgreSQL parameters. Dynamic bucket, grouping, sort, and other structural fragments come only from exhaustive application-owned maps. No raw client value becomes an identifier, operator, or SQL fragment. Attribute keys and values remain parameters even when the storage operator is dynamic.
 
-For arbitrary attribute keys, the implementation must avoid ordinary-object prototype mutation and inherited-property checks. **PROPOSED:** accept and preserve an empty ingestion key because the company contract establishes no key restriction; preserve non-empty Unicode keys exactly; and accept JavaScript-sensitive keys such as `__proto__` and `constructor` only through safe own-property/null-prototype or equivalent representations. Bare query name `attr.` remains separately invalid because the recognized `attr.<key>` grammar has no key segment. This remains subject to the attribute-storage/security approval and tests.
+For arbitrary attribute keys, the implementation must avoid ordinary-object prototype mutation and inherited-property checks. **ACCEPTED:** accept and preserve an empty ingestion key because the company contract establishes no key restriction; preserve non-empty Unicode keys exactly; and accept JavaScript-sensitive keys such as `__proto__` and `constructor` only through safe own-property/null-prototype or equivalent representations. Bare query name `attr.` remains separately invalid because the recognized `attr.<key>` grammar has no key segment.
 
-Cursor validation is not cursor authentication. The proposed unsigned cursor rejects malformed structures, invalid fields, versions, and filter mismatches, but a structurally valid timestamp/ID change is not cryptographically detectable and must be documented rather than mislabeled as tampering protection.
+Cursor validation is not cursor authentication. The accepted unsigned cursor rejects malformed structures, invalid fields, versions, and filter mismatches, but a structurally valid timestamp/ID change is not cryptographically detectable and must be documented rather than mislabeled as tampering protection.
 
 Ordinary request traffic uses a restricted non-superuser runtime role. A separate non-superuser owner role is used only for startup migrations/schema preparation; ongoing retention reaches owner-required partition operations through narrowly scoped, hardened routines. Role separation limits database blast radius but does not replace parameterization, query whitelists, input validation, credential redaction, or process/container security.
 
@@ -63,9 +64,6 @@ Logs use structured fields, redaction, bounded representations of untrusted inpu
 - Project decision: `DEC-012`
 - Training: Learn TypeScript; Learn HTTP Servers in TypeScript; Learn HTTP Clients in TypeScript; Learn SQL; Build a Blog Aggregator in TypeScript
 
-## Approval questions
+## Acceptance record
 
-1. Approve the typed-error and centralized HTTP-mapping boundary?
-2. Approve cautious `503` plus `Retry-After` for confidently transient database failures, with `500` as the generic fallback?
-3. Approve accepting empty ingestion keys while keeping bare query name `attr.` invalid, plus prototype-safe preservation for all keys?
-4. Approve separate migration-owner/runtime roles with hardened narrow retention routines?
+The reviewer approved centralized typed errors, generic `503`/`500` database-failure mapping, prototype-safe arbitrary keys, unsigned-cursor limitations, and separate owner/runtime roles with hardened retention routines on `2026-08-08`.

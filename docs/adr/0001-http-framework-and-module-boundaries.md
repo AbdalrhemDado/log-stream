@@ -1,8 +1,9 @@
 # ADR 0001 — HTTP Framework and Module Boundaries
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
-- **Implementation stage:** Stage 1 after approval
+- **Implementation stage:** Stage 1 after explicit task authorization
 
 ## Context
 
@@ -18,9 +19,9 @@ The service needs exact HTTP behavior, efficient JSON handling, strong TypeScrip
 
 For internal organization, feature modules compete with global horizontal layers and a fully hexagonal design. Feature modules keep route/service/repository code together; horizontal layers scatter a feature; full hexagonal ports add ceremony without multiple real adapters.
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** use Fastify in one modular application. Organize health, ingestion, logs, aggregation, and retention by feature, each with only the route/service/repository boundaries it needs. Share configuration, database infrastructure, filters, errors, and logging. Keep `app` creation separate from the process entry/listen function.
+**ACCEPTED — 2026-08-08:** use Fastify in one modular application. Organize health, ingestion, logs, aggregation, and retention by feature, each with only the route/service/repository boundaries it needs. Share configuration, database infrastructure, filters, errors, and logging. Keep `app` creation separate from the process entry/listen function.
 
 Fastify route schemas may validate top-level shapes, but independent log-entry validation remains explicit application logic so one invalid item does not reject the batch.
 
@@ -50,7 +51,6 @@ Fastify route schemas may validate top-level shapes, but independent log-entry v
 - Edge cases: `EDGE-ING-009`, `EDGE-BAT-006`, `EDGE-BAT-011`
 - Training: Learn TypeScript; Learn HTTP Servers in TypeScript; Build a Pokedex in TypeScript
 
-## Approval questions
+## Acceptance record
 
-1. Approve Fastify rather than Express or raw Node?
-2. Approve feature modules with minimal route/service/repository boundaries?
+The reviewer approved Fastify and feature-oriented route/service/repository boundaries on `2026-08-08`.

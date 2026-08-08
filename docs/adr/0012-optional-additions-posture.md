@@ -1,6 +1,7 @@
 # ADR 0012 — Optional Additions Posture
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
 - **Implementation stage:** After core contract and measured performance acceptance
 
@@ -16,9 +17,9 @@ Optional features can distinguish the project, but they cannot alter the fixed l
 | Add lightweight operational diagnostics after the core | Helps explain performance and incidents with limited contract impact | Still consumes implementation and validation time |
 | Implement no optional features | Lowest delivery risk | Fewer operational/demo differentiators |
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** freeze optional feature implementation until the mandatory API, Docker startup, retention, CI, and measured performance gates pass. If schedule and resource headroom remain, prioritize in this order:
+**ACCEPTED — 2026-08-08:** freeze optional feature implementation until the mandatory API, Docker startup, retention, CI, and measured performance gates pass. If schedule and resource headroom remain, prioritize in this order:
 
 1. lightweight internal metrics and benchmark diagnostics that do not change required response bodies;
 2. documented query-plan and operational troubleshooting aids;
@@ -53,8 +54,6 @@ Do not add multi-tenancy, a queue, cache, proxy, dashboard, rate limiter, or ext
 - Edge cases: `EDGE-OPT-001`–`EDGE-OPT-005`
 - Training: Learn HTTP Servers in TypeScript; Learn HTTP Clients in TypeScript; Learn Docker; Learn TypeScript; Build a Blog Aggregator in TypeScript
 
-## Approval questions
+## Acceptance record
 
-1. Approve deferring all optional implementation until the core acceptance gates pass?
-2. Approve lightweight metrics/diagnostics as the first optional differentiator?
-3. Should optional authentication remain only a backlog candidate rather than a planned deliverable?
+The reviewer approved deferring all optional implementation until the core gates pass, with lightweight metrics/diagnostics as the first possible differentiators and authentication remaining only a later backlog candidate, on `2026-08-08`.

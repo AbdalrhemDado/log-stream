@@ -1,8 +1,9 @@
 # ADR 0008 — Migrations and Readiness
 
-- **Status:** `PROPOSED — NOT APPROVED`
+- **Status:** `ACCEPTED`
+- **Decision date:** `2026-08-08`
 - **Decision owner:** project review checkpoint
-- **Implementation stage:** Stage 2 after approval
+- **Implementation stage:** Stage 2 after explicit task authorization
 
 ## Context
 
@@ -24,9 +25,9 @@ Privilege alternatives are:
 | Separate migration-owner and restricted runtime logins | Limits ordinary traffic to reviewed operations | Requires grants, two credentials, and narrow ongoing-retention privileges |
 | PostgreSQL superuser for application traffic | Avoids permission setup | Unacceptable cluster-wide blast radius and no justified runtime benefit |
 
-## Proposed decision
+## Accepted decision
 
-**PROPOSED — not approved:** implement an ordered SQL-file runner with a migration history table, checksum, and PostgreSQL advisory lock. Apply each migration transactionally where supported. Use forward-fix migrations rather than automatic destructive rollback.
+**ACCEPTED — 2026-08-08:** implement an ordered SQL-file runner with a migration history table, checksum, and PostgreSQL advisory lock. Apply each migration transactionally where supported. Use forward-fix migrations rather than automatic destructive rollback.
 
 Bootstrap initialization creates distinct non-superuser migration-owner and runtime login roles using built-in Compose defaults. The owner role owns the application schema, migration history, tables, partitions, and narrowly scoped retention routines. Startup opens a short-lived owner connection for migrations and required partition preparation, then closes it. The ordinary `pg` pool connects as the runtime role with only required `CONNECT`, schema `USAGE`, `SELECT`, `INSERT`, narrowly needed mutation rights, and `EXECUTE` on approved retention routines.
 
@@ -65,8 +66,6 @@ Startup states are: bootstrap roles if the database is fresh → connect as owne
 - Edge cases: `EDGE-RET-004`, `EDGE-BAT-009`
 - Training: Learn SQL; Learn TypeScript; Learn Docker; Learn HTTP Servers in TypeScript
 
-## Approval questions
+## Acceptance record
 
-1. Approve a small custom SQL runner rather than a migration library?
-2. Approve forward-fix-only migration history for this project?
-3. Approve separate non-superuser migration-owner/runtime roles and narrowly scoped retention routines?
+The reviewer approved the custom ordered SQL runner, forward-fix migration history, separate non-superuser owner/runtime roles, and hardened narrow retention routines on `2026-08-08`.
