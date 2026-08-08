@@ -39,7 +39,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 1.1 — Project scaffold
 
-- **Status:** In progress on `chore/bootstrap`; implementation and validation are complete but uncommitted pending review.
+- **Status:** Completed, committed as `4b05d9dec6dc4bc522d49bd9ce715a92847372cc`, and pushed to `origin/chore/bootstrap`; not merged.
 - **Goal:** Create the smallest strict TypeScript HTTP-service foundation and developer toolchain.
 - **Relevant requirement IDs:** `CORE-001`, `INF-002`, `CI-001`, `DEL-001`, `DOC-001`.
 - **Dependencies:** Approved Stage 0 architecture decisions affecting framework and project structure.
@@ -50,6 +50,7 @@ Suggested branches are planning guidance, not authorization to create them. Comp
 
 ### Task 1.2 — Error and shutdown foundation
 
+- **Status:** In progress on `chore/bootstrap`; implementation and validation are complete but uncommitted pending review.
 - **Goal:** Establish safe error mapping, request correlation, and graceful process shutdown.
 - **Relevant requirement IDs:** `HLT-001`, `SEC-003`, `REL-001`, `ING-012`, `QRY-015`, `AGG-008`.
 - **Dependencies:** Task 1.1.
@@ -387,5 +388,6 @@ Optional tasks may start only after the required contract, CI, and performance e
 - The reviewer/architect accepted the Stage 0.2 architecture baseline and all 12 ADRs on `2026-08-08`.
 - Architecture acceptance commit: `169f62bf82d4f5bca332885ed3e006422591e381`.
 - Stage 0.2 was merged through [PR #2](https://github.com/AbdalrhemDado/log-stream/pull/2) in merge commit `056b16cacefa8f1f595d652865fb6c0269b72d90`; local `main` was updated.
-- Stage 1, Task 1.1 implementation and validation are complete on `chore/bootstrap`; the work is not committed or pushed and remains in progress pending review.
-- Task 1.2 has not started and requires separate explicit authorization.
+- Stage 1, Task 1.1 was committed as `4b05d9dec6dc4bc522d49bd9ce715a92847372cc` and pushed to `origin/chore/bootstrap`; it is not merged.
+- Stage 1, Task 1.2 implementation and validation are complete on `chore/bootstrap`; the work remains uncommitted and unpushed pending review.
+- Stage 2, Task 2.1 has not started and requires separate explicit authorization.

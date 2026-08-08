@@ -356,9 +356,11 @@ Current factual state at this checkpoint:
 
 - `main` was updated to the Stage 0.2 merge commit before Stage 1 work began.
 - Branch: `chore/bootstrap`
-- Stage 1, Task 1.1 project-scaffold implementation and validation are complete;
-  the work is uncommitted and remains in progress pending review.
-- Task 1.2 has not started.
+- Stage 1, Task 1.1 was committed and pushed to `origin/chore/bootstrap` as
+  `4b05d9dec6dc4bc522d49bd9ce715a92847372cc chore: scaffold strict TypeScript service`.
+- Stage 1, Task 1.2 error-and-shutdown foundation implementation and validation
+  are complete; the work is uncommitted and unpushed pending review.
+- Stage 2, Task 2.1 has not started.
 - No ADR acceptance is evidence that the design is implemented or that any
   performance target has been met.
 
@@ -366,9 +368,9 @@ Current factual state at this checkpoint:
 
 # 11. Next Planned Task
 
-The active task is Stage 1, Task 1.1 on `chore/bootstrap`. Review the validated
-diff and wait for explicit commit approval. Do not commit or push Task 1.1
-without that approval, and do not begin Task 1.2.
+The active task is Stage 1, Task 1.2 on `chore/bootstrap`. Review the validated
+diff and wait for explicit commit approval. Do not commit or push Task 1.2
+without that approval, and do not begin Stage 2, Task 2.1.
 
 The accepted architecture is the baseline for later implementation, but
 evidence-gated details must still be decided from Stage 1 implementation,

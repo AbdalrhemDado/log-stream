@@ -21,6 +21,43 @@ describe("buildApp", () => {
     expect(response.statusCode).toBe(404);
     expect(app.server.listening).toBe(false);
   });
+
+  it("generates a distinct bounded request ID for each request", async () => {
+    const app = buildApp();
+    apps.push(app);
+
+    const first = await app.inject({ method: "GET", url: "/" });
+    const second = await app.inject({ method: "GET", url: "/" });
+    const firstRequestId = first.headers["x-request-id"];
+    const secondRequestId = second.headers["x-request-id"];
+
+    expect(firstRequestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(secondRequestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(secondRequestId).not.toBe(firstRequestId);
+  });
+
+  it("ignores an untrusted client request ID", async () => {
+    const app = buildApp();
+    apps.push(app);
+    const hostileRequestId = "hostile".repeat(512);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/",
+      headers: {
+        "request-id": hostileRequestId,
+        "x-request-id": hostileRequestId,
+      },
+    });
+    const responseRequestId = response.headers["x-request-id"];
+
+    expect(responseRequestId).not.toBe(hostileRequestId);
+    expect(responseRequestId).toHaveLength(36);
+  });
 });
 
 describe("loadConfig", () => {
