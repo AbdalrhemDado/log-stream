@@ -347,29 +347,30 @@ Known completed work:
   `2026-08-08`.
 - The architecture proposal, ADR index, ADR records, traceability matrix, and
   edge-case matrix record that approval.
+- Stage 0.2 was merged through pull request:
+  `https://github.com/AbdalrhemDado/log-stream/pull/2`
+- Stage 0.2 merge commit:
+  `056b16cacefa8f1f595d652865fb6c0269b72d90 Merge pull request #2 from AbdalrhemDado/docs/architecture-design`
 
 Current factual state at this checkpoint:
 
-- Branch: `docs/architecture-design`
-- The architecture branch has been pushed to `origin`.
-- The architecture branch has not been merged into `main`.
+- `main` was updated to the Stage 0.2 merge commit before Stage 1 work began.
+- Branch: `chore/bootstrap`
+- Stage 1, Task 1.1 was committed and pushed to `origin/chore/bootstrap` as
+  `4b05d9dec6dc4bc522d49bd9ce715a92847372cc chore: scaffold strict TypeScript service`.
+- Stage 1, Task 1.2 error-and-shutdown foundation implementation and validation
+  are complete; the work is uncommitted and unpushed pending review.
+- Stage 2, Task 2.1 has not started.
 - No ADR acceptance is evidence that the design is implemented or that any
   performance target has been met.
-- Stage 1 has not started.
 
 ---
 
 # 11. Next Planned Task
 
-The next action is to create, review, and merge a pull request for
-`docs/architecture-design`, each step subject to the repository's authorization
-workflow.
-
-Stage 1 remains a future task. It must not begin until:
-
-1. the architecture branch is reviewed and merged;
-2. `main` is updated locally from `origin/main`; and
-3. the student explicitly authorizes the relevant Stage 1 backlog task.
+The active task is Stage 1, Task 1.2 on `chore/bootstrap`. Review the validated
+diff and wait for explicit commit approval. Do not commit or push Task 1.2
+without that approval, and do not begin Stage 2, Task 2.1.
 
 The accepted architecture is the baseline for later implementation, but
 evidence-gated details must still be decided from Stage 1 implementation,
