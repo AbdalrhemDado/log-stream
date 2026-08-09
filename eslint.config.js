@@ -8,7 +8,7 @@ export default defineConfig(
   tseslint.configs.strictTypeChecked,
   tseslint.configs.stylisticTypeChecked,
   {
-    files: ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
+    files: ["src/**/*.ts", "test/**/*.ts", "tools/**/*.ts", "vitest.config.ts"],
     languageOptions: {
       parserOptions: {
         projectService: true,

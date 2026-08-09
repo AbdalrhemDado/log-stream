@@ -22,6 +22,8 @@ import {
   ShutdownTimeoutError,
   type ShutdownSignalSource,
 } from "./server-lifecycle.js";
+import { createIngestionRepository } from "./modules/ingestion/ingestion-repository.js";
+import { createIngestionService } from "./modules/ingestion/ingestion-service.js";
 import { buildLoggerOptions } from "./shared/logging.js";
 import { createReadiness } from "./shared/readiness.js";
 
@@ -52,10 +54,14 @@ async function startRuntime(
     });
     await verifyRuntimeDatabase(databasePool);
 
+    const ingestionRepository = createIngestionRepository(databasePool);
+    const ingestionService = createIngestionService({ repository: ingestionRepository });
+
     app = buildApp({
       logger: buildLoggerOptions(config),
       readiness,
       databaseProbe: async () => probeDatabase(databasePool),
+      ingestionService,
     });
     app.log.info({ attempts: databaseWait.attempts }, "Runtime database verified");
   } catch (error: unknown) {

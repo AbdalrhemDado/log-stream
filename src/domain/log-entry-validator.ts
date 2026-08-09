@@ -22,11 +22,15 @@ const REASONS = {
   serviceRequired: "service is required",
   serviceString: "service must be a string",
   serviceEmpty: "service must be non-empty",
+  serviceNul: "service must not contain U+0000",
   messageRequired: "message is required",
   messageString: "message must be a string",
   messageEmpty: "message must be non-empty",
+  messageNul: "message must not contain U+0000",
   attributesObject: "attributes must be a non-null object",
+  attributeKeyNul: "attribute keys must not contain U+0000",
   attributeValue: "attribute values must be strings, finite numbers, or booleans",
+  attributeStringNul: "string attribute values must not contain U+0000",
 } as const;
 
 const TIMESTAMP_PATTERN =
@@ -60,6 +64,10 @@ function failure(reason: string): ValidationResult {
 
 function hasOwn(value: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function containsUnicodeNul(value: string): boolean {
+  return value.includes("\u0000");
 }
 
 function isLogLevel(value: string): value is LogLevel {
@@ -188,8 +196,16 @@ function validateAttributes(value: unknown): AttributeValidationResult {
   const safeAttributes = Object.create(null) as Record<string, AttributeValue>;
 
   for (const [key, attributeValue] of Object.entries(value)) {
+    if (containsUnicodeNul(key)) {
+      return { ok: false, reason: REASONS.attributeKeyNul };
+    }
+
     if (!isAttributeValue(attributeValue)) {
       return { ok: false, reason: REASONS.attributeValue };
+    }
+
+    if (typeof attributeValue === "string" && containsUnicodeNul(attributeValue)) {
+      return { ok: false, reason: REASONS.attributeStringNul };
     }
 
     safeAttributes[key] = attributeValue;
@@ -247,6 +263,10 @@ export function validateLogEntry(input: unknown, referenceTimeMs: number): Valid
     return failure(REASONS.serviceEmpty);
   }
 
+  if (containsUnicodeNul(entry["service"])) {
+    return failure(REASONS.serviceNul);
+  }
+
   if (!hasOwn(entry, "message")) {
     return failure(REASONS.messageRequired);
   }
@@ -257,6 +277,10 @@ export function validateLogEntry(input: unknown, referenceTimeMs: number): Valid
 
   if (entry["message"].length === 0) {
     return failure(REASONS.messageEmpty);
+  }
+
+  if (containsUnicodeNul(entry["message"])) {
+    return failure(REASONS.messageNul);
   }
 
   const attributes = validateAttributes(hasOwn(entry, "attributes") ? entry["attributes"] : {});

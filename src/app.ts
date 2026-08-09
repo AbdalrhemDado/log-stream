@@ -3,7 +3,9 @@ import { randomUUID } from "node:crypto";
 import Fastify, { LogController, type FastifyInstance, type FastifyServerOptions } from "fastify";
 
 import type { DatabaseProbe } from "./database/database-pool.js";
+import type { IngestionService } from "./modules/ingestion/ingestion-service.js";
 import { registerHealthRoute } from "./routes/health.js";
+import { registerLogsRoute } from "./routes/logs.js";
 import { registerErrorHandler } from "./shared/error-handler.js";
 import { createReadiness, type Readiness } from "./shared/readiness.js";
 
@@ -14,6 +16,7 @@ export interface BuildAppOptions {
   readonly logger?: FastifyServerOptions["logger"];
   readonly readiness?: Readiness;
   readonly databaseProbe?: DatabaseProbe;
+  readonly ingestionService?: IngestionService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -27,6 +30,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       requestIdLogLabel: REQUEST_ID_LOG_LABEL,
     }),
     logger: options.logger ?? false,
+    onConstructorPoisoning: "ignore",
+    onProtoPoisoning: "ignore",
     requestIdHeader: false,
   });
 
@@ -37,6 +42,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   registerErrorHandler(app);
   registerHealthRoute(app, { readiness, databaseProbe });
+  if (options.ingestionService !== undefined) {
+    registerLogsRoute(app, { ingestionService: options.ingestionService });
+  }
 
   return app;
 }
