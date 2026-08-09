@@ -6,6 +6,7 @@ import { validateLogEntry } from "../../src/domain/log-entry-validator.js";
 
 const REFERENCE_TIME_MS = Date.UTC(2026, 0, 15, 12, 0, 0, 0);
 const VALID_TIMESTAMP = "2026-01-15T12:00:00.000Z";
+const NUL = "\u0000";
 
 const reasons = {
   entryObject: "log entry must be a non-null object",
@@ -20,11 +21,15 @@ const reasons = {
   serviceRequired: "service is required",
   serviceString: "service must be a string",
   serviceEmpty: "service must be non-empty",
+  serviceNul: "service must not contain U+0000",
   messageRequired: "message is required",
   messageString: "message must be a string",
   messageEmpty: "message must be non-empty",
+  messageNul: "message must not contain U+0000",
   attributesObject: "attributes must be a non-null object",
+  attributeKeyNul: "attribute keys must not contain U+0000",
   attributeValue: "attribute values must be strings, finite numbers, or booleans",
+  attributeStringNul: "string attribute values must not contain U+0000",
 } as const;
 
 function validEntry(overrides: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
@@ -321,6 +326,15 @@ describe("validateLogEntry", () => {
       expectFailure(validEntry({ [field]: "" }), reason);
     });
 
+    it.each([
+      { field: "service", value: NUL, reason: reasons.serviceNul },
+      { field: "service", value: `check${NUL}out`, reason: reasons.serviceNul },
+      { field: "message", value: NUL, reason: reasons.messageNul },
+      { field: "message", value: `payment${NUL}accepted`, reason: reasons.messageNul },
+    ])("rejects U+0000 in $field without echoing its value", ({ field, value, reason }) => {
+      expectFailure(validEntry({ [field]: value }), reason);
+    });
+
     it("accepts and preserves whitespace-only strings", () => {
       const value = expectSuccess(validEntry({ service: "   ", message: "\t" }));
 
@@ -335,6 +349,25 @@ describe("validateLogEntry", () => {
 
       expect(value.service).toBe(" checkout ");
       expect(value.message).toBe(" payment accepted ");
+    });
+
+    it.each([
+      { name: "U+0001", character: "\u0001" },
+      { name: "tab", character: "\t" },
+      { name: "newline", character: "\n" },
+      { name: "carriage return", character: "\r" },
+    ])("does not treat $name as U+0000", ({ character }) => {
+      const value = expectSuccess(
+        validEntry({
+          service: `service${character}name`,
+          message: `message${character}value`,
+          attributes: { [`key${character}`]: `value${character}` },
+        }),
+      );
+
+      expect(value.service).toBe(`service${character}name`);
+      expect(value.message).toBe(`message${character}value`);
+      expect(value.attributes[`key${character}`]).toBe(`value${character}`);
     });
   });
 
@@ -391,16 +424,37 @@ describe("validateLogEntry", () => {
       expectFailure(validEntry({ attributes: { unsafe: value } }), reasons.attributeValue);
     });
 
+    it("rejects a non-empty attribute key containing U+0000", () => {
+      expectFailure(
+        validEntry({ attributes: { [`request${NUL}id`]: "value" } }),
+        reasons.attributeKeyNul,
+      );
+    });
+
+    it("rejects a string attribute value containing U+0000", () => {
+      expectFailure(
+        validEntry({ attributes: { request_id: `abc${NUL}def` } }),
+        reasons.attributeStringNul,
+      );
+    });
+
+    it("checks an attribute key before validating that entry's value", () => {
+      expectFailure(
+        validEntry({ attributes: { [`unsafe${NUL}key`]: { nested: true } } }),
+        reasons.attributeKeyNul,
+      );
+    });
+
     it("preserves negative zero at the validation stage", () => {
       const value = expectSuccess(validEntry({ attributes: { balance: -0 } }));
 
       expect(Object.is(value.attributes["balance"], -0)).toBe(true);
     });
 
-    it("preserves empty, Unicode, and JavaScript-sensitive keys safely", () => {
+    it("preserves empty, Unicode, and JavaScript-sensitive keys and values safely", () => {
       const inputAttributes = Object.create(null) as Record<string, unknown>;
       inputAttributes[""] = "empty";
-      inputAttributes["地域"] = "eu-west";
+      inputAttributes["地域"] = "שלום 世界";
       inputAttributes["__proto__"] = "prototype value";
       Object.defineProperty(inputAttributes, "constructor", {
         value: "constructor value",
@@ -415,6 +469,8 @@ describe("validateLogEntry", () => {
       expect(Object.hasOwn(value.attributes, "地域")).toBe(true);
       expect(Object.hasOwn(value.attributes, "__proto__")).toBe(true);
       expect(Object.hasOwn(value.attributes, "constructor")).toBe(true);
+      expect(value.attributes[""]).toBe("empty");
+      expect(value.attributes["地域"]).toBe("שלום 世界");
       expect(value.attributes["__proto__"]).toBe("prototype value");
       expect(Reflect.get(value.attributes, "constructor")).toBe("constructor value");
     });
@@ -453,6 +509,15 @@ describe("validateLogEntry", () => {
       expect(value.attributes).not.toBe(inputAttributes);
       expect(value.attributes["request_id"]).toBe("abc");
     });
+
+    it("does not mutate rejected entry or attribute objects", () => {
+      const inputAttributes = Object.freeze({ request_id: `abc${NUL}def` });
+      const input = Object.freeze(validEntry({ attributes: inputAttributes }));
+
+      expectFailure(input, reasons.attributeStringNul);
+      expect(input["attributes"]).toBe(inputAttributes);
+      expect(inputAttributes.request_id).toBe(`abc${NUL}def`);
+    });
   });
 
   describe("unknown fields", () => {
@@ -466,6 +531,13 @@ describe("validateLogEntry", () => {
         "message",
         "attributes",
       ]);
+      expect("metadata" in value).toBe(false);
+    });
+
+    it("ignores an unknown field containing U+0000", () => {
+      const value = expectSuccess(validEntry({ metadata: `ignored${NUL}value` }));
+
+      expect(value.service).toBe("checkout");
       expect("metadata" in value).toBe(false);
     });
 
@@ -505,9 +577,19 @@ describe("validateLogEntry", () => {
         reason: reasons.serviceEmpty,
       },
       {
+        name: "service U+0000 before message",
+        input: validEntry({ service: NUL, message: "", attributes: null }),
+        reason: reasons.serviceNul,
+      },
+      {
         name: "message before attributes",
         input: validEntry({ message: "", attributes: null }),
         reason: reasons.messageEmpty,
+      },
+      {
+        name: "message U+0000 before attributes",
+        input: validEntry({ message: NUL, attributes: null }),
+        reason: reasons.messageNul,
       },
       {
         name: "attributes last",
@@ -519,12 +601,13 @@ describe("validateLogEntry", () => {
     });
 
     it("returns equivalent results for identical input and reference time", () => {
-      const input = validEntry({ attributes: { retries: 3, enabled: true } });
+      const input = validEntry({ attributes: { request_id: `abc${NUL}def` } });
 
       const first = validateLogEntry(input, REFERENCE_TIME_MS);
       const second = validateLogEntry(input, REFERENCE_TIME_MS);
 
       expect(second).toEqual(first);
+      expect(first).toEqual({ ok: false, reason: reasons.attributeStringNul });
     });
   });
 });
