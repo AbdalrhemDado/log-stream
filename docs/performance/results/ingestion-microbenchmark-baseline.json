@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "run": {
+    "timestampUtc": "2026-08-09T21:53:41.485Z",
+    "baseCommit": "68d89efa1f40ede6b95a1de68dbf82e4356d65fe",
+    "branch": "feat/ingestion-repository",
+    "workingTreeDirty": true,
+    "task43PathsUncommitted": true,
+    "sourceState": "Task 4.3 benchmark paths have uncommitted changes."
+  },
+  "environment": {
+    "nodeVersion": "v24.18.0",
+    "npmVersion": "11.16.0",
+    "platform": "win32",
+    "release": "10.0.26200",
+    "architecture": "x64",
+    "cpuModel": "Intel(R) Core(TM) i5-14400F",
+    "logicalCpuCount": 16,
+    "hostMemoryBytes": 34187763712,
+    "dockerVersion": "29.6.2",
+    "postgresImage": "postgres:16.14-bookworm",
+    "postgresVersion": "16.14 (Debian 16.14-1.pgdg12+1)"
+  },
+  "dockerControls": {
+    "nanoCpus": 1000000000,
+    "memoryBytes": 1073741824,
+    "autoRemove": true,
+    "persistentMountCount": 0
+  },
+  "applicationProcess": {
+    "constrainedToCompanyLimit": false,
+    "note": "The benchmark TypeScript process ran on the host and was not constrained to 0.5 CPU or 256 MiB RAM."
+  },
+  "configuration": {
+    "seed": 20260810,
+    "batchSize": 1000,
+    "warmupBatches": 2,
+    "measuredBatches": 10,
+    "warmupRows": 2000,
+    "measuredRows": 10000,
+    "poolMaximum": 4,
+    "referenceTimeUtc": "2026-08-09T21:53:40.516Z"
+  },
+  "percentileMethod": "Non-interpolated nearest rank: sort ascending, rank=ceil(percentile/100*count), convert to a clamped zero-based index. With ten samples, p95 and p99 normally select the maximum and are descriptive only.",
+  "stages": {
+    "validation": {
+      "operationCount": 10000,
+      "durationMs": 30.759500000000116,
+      "throughputPerSecond": 325102.8137648519,
+      "checksum": "1798faef",
+      "memoryBefore": {
+        "rssBytes": 97353728,
+        "heapTotalBytes": 32481280,
+        "heapUsedBytes": 17957664,
+        "externalBytes": 7475240,
+        "arrayBuffersBytes": 3551979
+      },
+      "memoryAfter": {
+        "rssBytes": 110010368,
+        "heapTotalBytes": 52928512,
+        "heapUsedBytes": 23172448,
+        "externalBytes": 6221980,
+        "arrayBuffersBytes": 3551979
+      }
+    },
+    "normalization": {
+      "operationCount": 10000,
+      "durationMs": 9.621900000000096,
+      "throughputPerSecond": 1039295.77318408,
+      "checksum": "cd89bac3",
+      "memoryBefore": {
+        "rssBytes": 110010368,
+        "heapTotalBytes": 52928512,
+        "heapUsedBytes": 23172952,
+        "externalBytes": 6221980,
+        "arrayBuffersBytes": 3551979
+      },
+      "memoryAfter": {
+        "rssBytes": 121729024,
+        "heapTotalBytes": 56336384,
+        "heapUsedBytes": 25567784,
+        "externalBytes": 6221980,
+        "arrayBuffersBytes": 3551979
+      }
+    },
+    "repository": {
+      "batchCount": 10,
+      "batchSize": 1000,
+      "operationCount": 10000,
+      "samplesMs": [
+        15.414999999999964,
+        13.601899999999887,
+        23.754100000000108,
+        13.005799999999908,
+        13.535000000000082,
+        13.59960000000001,
+        13.833200000000033,
+        13.65059999999994,
+        18.097200000000157,
+        13.747600000000148
+      ],
+      "totalDurationMs": 152.24000000000024,
+      "throughputPerSecond": 65685.75932737772,
+      "batchLatencyP50Ms": 13.65059999999994,
+      "batchLatencyP95Ms": 23.754100000000108,
+      "batchLatencyP99Ms": 23.754100000000108,
+      "expectedRows": 10000,
+      "observedRows": 10000,
+      "warmupResetObservedRows": 0,
+      "immediateVisibilityQueryDurationMs": 1.7042999999998756,
+      "memoryBefore": {
+        "rssBytes": 123838464,
+        "heapTotalBytes": 58433536,
+        "heapUsedBytes": 32950720,
+        "externalBytes": 6221980,
+        "arrayBuffersBytes": 3551979
+      },
+      "memoryAfter": {
+        "rssBytes": 128831488,
+        "heapTotalBytes": 93560832,
+        "heapUsedBytes": 30035168,
+        "externalBytes": 7594249,
+        "arrayBuffersBytes": 4924248
+      }
+    }
+  },
+  "limitations": [
+    "This is a local functional microbenchmark, not an HTTP load test.",
+    "The host application process did not run under the company application CPU and memory limits.",
+    "Ten repository samples provide descriptive percentiles, not statistical confidence.",
+    "No concurrent query or aggregation traffic was present.",
+    "The measured dataset is much smaller than one million rows.",
+    "Immediate row visibility is a functional observation, not final freshness-target evidence.",
+    "One baseline does not justify changing UNNEST, pool size, indexes, or durability settings."
+  ],
+  "unverifiedRequirements": [
+    "INF-003 application limit",
+    "PERF-001",
+    "PERF-002",
+    "PERF-003",
+    "PERF-004",
+    "PERF-005",
+    "PERF-006",
+    "PERF-007 final reporting"
+  ]
+}
