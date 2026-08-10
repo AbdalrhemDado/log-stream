@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import Fastify, { LogController, type FastifyInstance, type FastifyServerOptions } from "fastify";
 
 import type { DatabaseProbe } from "./database/database-pool.js";
+import type { LogAggregationService } from "./modules/aggregation/log-aggregation-service.js";
 import type { IngestionService } from "./modules/ingestion/ingestion-service.js";
 import type { LogQueryService } from "./modules/query/log-query-service.js";
 import { registerHealthRoute } from "./routes/health.js";
@@ -18,6 +19,7 @@ export interface BuildAppOptions {
   readonly readiness?: Readiness;
   readonly databaseProbe?: DatabaseProbe;
   readonly ingestionService?: IngestionService;
+  readonly logAggregationService?: LogAggregationService;
   readonly logQueryService?: LogQueryService;
 }
 
@@ -44,11 +46,18 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   registerErrorHandler(app);
   registerHealthRoute(app, { readiness, databaseProbe });
-  if (options.ingestionService !== undefined || options.logQueryService !== undefined) {
+  if (
+    options.ingestionService !== undefined ||
+    options.logAggregationService !== undefined ||
+    options.logQueryService !== undefined
+  ) {
     registerLogsRoute(app, {
       ...(options.ingestionService === undefined
         ? {}
         : { ingestionService: options.ingestionService }),
+      ...(options.logAggregationService === undefined
+        ? {}
+        : { logAggregationService: options.logAggregationService }),
       ...(options.logQueryService === undefined
         ? {}
         : { logQueryService: options.logQueryService }),
