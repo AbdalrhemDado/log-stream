@@ -1,19 +1,34 @@
 import type { FastifyInstance } from "fastify";
 
 import type { IngestionService } from "../modules/ingestion/ingestion-service.js";
+import type { LogQueryService } from "../modules/query/log-query-service.js";
 
 const INGESTION_SUCCESS_STATUS = 200;
 const INGESTION_REJECTED_STATUS = 400;
 
 export interface LogsRouteOptions {
-  readonly ingestionService: IngestionService;
+  readonly ingestionService?: IngestionService;
+  readonly logQueryService?: LogQueryService;
 }
 
 export function registerLogsRoute(app: FastifyInstance, options: LogsRouteOptions): void {
-  app.post("/logs", async (request, reply) => {
-    const response = await options.ingestionService.ingest(request.body);
-    const statusCode = response.accepted > 0 ? INGESTION_SUCCESS_STATUS : INGESTION_REJECTED_STATUS;
+  const ingestionService = options.ingestionService;
+  if (ingestionService !== undefined) {
+    app.post("/logs", async (request, reply) => {
+      const response = await ingestionService.ingest(request.body);
+      const statusCode =
+        response.accepted > 0 ? INGESTION_SUCCESS_STATUS : INGESTION_REJECTED_STATUS;
 
-    return reply.status(statusCode).send(response);
-  });
+      return reply.status(statusCode).send(response);
+    });
+  }
+
+  const logQueryService = options.logQueryService;
+  if (logQueryService !== undefined) {
+    app.get("/logs", async (request, reply) => {
+      const response = await logQueryService.list(request.query);
+
+      return reply.status(200).send(response);
+    });
+  }
 }
