@@ -10,6 +10,8 @@ import type { MigrationOwnerConnection } from "../../src/database/migrations/mig
 import { buildPartitionPlan } from "../../src/database/partitions/partition-plan.js";
 import { preparePartitions } from "../../src/database/partitions/partition-preparer.js";
 import type { LogId } from "../../src/domain/log-entry.js";
+import { createLogAggregationRepository } from "../../src/modules/aggregation/log-aggregation-repository.js";
+import { createLogAggregationService } from "../../src/modules/aggregation/log-aggregation-service.js";
 import { createIngestionRepository } from "../../src/modules/ingestion/ingestion-repository.js";
 import { createIngestionService } from "../../src/modules/ingestion/ingestion-service.js";
 import { createLogQueryRepository } from "../../src/modules/query/log-query-repository.js";
@@ -96,7 +98,11 @@ function buildHttpApplication(generateId: () => LogId): ReturnType<typeof buildA
   });
   const logQueryRepository = createLogQueryRepository(runtimePool);
   const logQueryService = createLogQueryService({ repository: logQueryRepository });
-  return buildApp({ ingestionService, logQueryService });
+  const logAggregationRepository = createLogAggregationRepository(runtimePool);
+  const logAggregationService = createLogAggregationService({
+    repository: logAggregationRepository,
+  });
+  return buildApp({ ingestionService, logAggregationService, logQueryService });
 }
 
 function sequentialIdGenerator(): () => LogId {
@@ -614,5 +620,202 @@ SELECT
     expect(second.logs.map((row) => row.id)).toEqual(["00000000-0000-4000-8000-000000000001"]);
     expect(second.logs.map((row) => row.message)).not.toContain("inserted ahead of cursor");
     expect(second.next_cursor).toBeNull();
+  });
+
+  it("aggregates ingested rows with every bucket, grouping, and shared filters", async () => {
+    app = buildHttpApplication(sequentialIdGenerator());
+    const payload = `{"logs":[{"timestamp":"2026-08-09T10:00:00.000Z","level":"error","service":"checkout","message":"Payment DECLINED literal % _ \\\\ path","attributes":{"retries":3,"enabled":true,"__proto__":"prototype","constructor":"constructor","unicode-שלום":"ערך-世界","backslash-\\\\key":"value-\\\\path"}},{"timestamp":"2026-08-09T10:00:30.000Z","level":"warn","service":"checkout","message":"same minute","attributes":{"retries":3,"enabled":false}},{"timestamp":"2026-08-09T10:05:00.000Z","level":"info","service":"auth","message":"next five minutes","attributes":{"retries":"03"}},{"timestamp":"2026-08-09T11:00:00.000Z","level":"info","service":"__proto__","message":"prototype group","attributes":{"constructor":"safe"}}]}`;
+    const ingestion = await app.inject({
+      method: "POST",
+      url: "/logs",
+      headers: { "content-type": "application/json" },
+      payload,
+    });
+    expect(ingestion.statusCode).toBe(200);
+
+    const base = "since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z";
+    const expectedCounts = new Map([
+      ["1m", [2, 1, 1]],
+      ["5m", [2, 1, 1]],
+      ["1h", [3, 1]],
+      ["1d", [4]],
+    ]);
+    for (const bucket of ["1m", "5m", "1h", "1d"] as const) {
+      const response = await app.inject({
+        method: "GET",
+        url: `/logs/aggregate?${base}&bucket=${bucket}`,
+      });
+      expect(response.statusCode, bucket).toBe(200);
+      const body = response.json<{
+        buckets: { start: string; group: string | null; count: number }[];
+      }>();
+      expect(
+        body.buckets.map((item) => item.count),
+        bucket,
+      ).toEqual(expectedCounts.get(bucket));
+      expect(
+        body.buckets.every((item) => item.group === null),
+        bucket,
+      ).toBe(true);
+      expect(Object.keys(body.buckets[0] ?? {}), bucket).toEqual(["start", "group", "count"]);
+    }
+
+    const byService = await app.inject({
+      method: "GET",
+      url: `/logs/aggregate?${base}&bucket=1h&group_by=service`,
+    });
+    expect(byService.statusCode).toBe(200);
+    expect(byService.json()).toEqual({
+      buckets: [
+        { start: "2026-08-09T10:00:00.000Z", group: "auth", count: 1 },
+        { start: "2026-08-09T10:00:00.000Z", group: "checkout", count: 2 },
+        { start: "2026-08-09T11:00:00.000Z", group: "__proto__", count: 1 },
+      ],
+    });
+    expect(Reflect.get(Object.prototype, "polluted")).toBeUndefined();
+
+    const byLevel = await app.inject({
+      method: "GET",
+      url: `/logs/aggregate?${base}&bucket=1h&group_by=level`,
+    });
+    expect(byLevel.json()).toEqual({
+      buckets: [
+        { start: "2026-08-09T10:00:00.000Z", group: "error", count: 1 },
+        { start: "2026-08-09T10:00:00.000Z", group: "info", count: 1 },
+        { start: "2026-08-09T10:00:00.000Z", group: "warn", count: 1 },
+        { start: "2026-08-09T11:00:00.000Z", group: "info", count: 1 },
+      ],
+    });
+
+    const filtered = await app.inject({
+      method: "GET",
+      url: `/logs/aggregate?${base}&bucket=1h&group_by=service&service=checkout&level=error&attr.retries=3&attr.enabled=true&attr.__proto__=prototype&attr.constructor=constructor&attr.unicode-%D7%A9%D7%9C%D7%95%D7%9D=%D7%A2%D7%A8%D7%9A-%E4%B8%96%E7%95%8C&attr.backslash-%5Ckey=value-%5Cpath&q=%25%20_%20%5C`,
+    });
+    expect(filtered.statusCode).toBe(200);
+    expect(filtered.json()).toEqual({
+      buckets: [{ start: "2026-08-09T10:00:00.000Z", group: "checkout", count: 1 }],
+    });
+
+    const equal = await app.inject({
+      method: "GET",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T10%3A00%3A00Z&bucket=1m",
+    });
+    expect(equal.body).toBe('{"buckets":[]}');
+  });
+
+  it("returns exact public aggregation validation failures", async () => {
+    app = buildHttpApplication(sequentialIdGenerator());
+    const cases = [
+      {
+        name: "missing since",
+        url: "/logs/aggregate?until=2026-08-09T12%3A00%3A00Z&bucket=1m",
+        body: '{"error":"Query parameter \'since\' is required."}',
+      },
+      {
+        name: "invalid bucket",
+        url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m%3BSELECT",
+        body: '{"error":"Query parameter \'bucket\' must be one of 1m, 5m, 1h, or 1d."}',
+      },
+      {
+        name: "duplicate bucket",
+        url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&bucket=1m",
+        body: '{"error":"Query parameter \'bucket\' must appear at most once."}',
+      },
+      {
+        name: "duplicate group",
+        url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&group_by=service&group_by=level",
+        body: '{"error":"Query parameter \'group_by\' must appear at most once."}',
+      },
+      {
+        name: "earlier until",
+        url: "/logs/aggregate?since=2026-08-09T12%3A00%3A00Z&until=2026-08-09T10%3A00%3A00Z&bucket=1m",
+        body: "{\"error\":\"Query parameter 'until' must not be earlier than 'since'.\"}",
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const response = await app.inject({ method: "GET", url: testCase.url });
+      expect(response.statusCode, testCase.name).toBe(400);
+      expect(response.body, testCase.name).toBe(testCase.body);
+      expect(response.body, testCase.name).not.toContain("buckets");
+      expect(response.body, testCase.name).not.toContain("SELECT");
+      expect(response.body, testCase.name).not.toContain("logstream.logs");
+    }
+  });
+
+  it("keeps aggregation injection values as data and the table intact", async () => {
+    if (runtimePool === undefined) {
+      throw new Error("Runtime pool was not created.");
+    }
+    app = buildHttpApplication(sequentialIdGenerator());
+    const insertion = await app.inject({
+      method: "POST",
+      url: "/logs",
+      payload: {
+        logs: [
+          {
+            timestamp: validTimestamp,
+            level: "info",
+            service: "ordinary",
+            message: "ordinary",
+            attributes: { safe: "value" },
+          },
+        ],
+      },
+    });
+    expect(insertion.statusCode).toBe(200);
+    const injection = "ordinary'); DROP TABLE logstream.logs; --";
+    const response = await app.inject({
+      method: "GET",
+      url: `/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&service=${encodeURIComponent(injection)}&attr.key%22%7D%20OR%20TRUE%20--=${encodeURIComponent("value'); SELECT pg_sleep(10); --")}&q=${encodeURIComponent("%' OR TRUE --")}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ buckets: [] });
+    const evidence = await runtimePool.query<{ table_name: string; count: number }>(`
+SELECT
+  to_regclass('logstream.logs')::text AS table_name,
+  (SELECT COUNT(*)::integer FROM logstream.logs) AS count
+`);
+    expect(evidence.rows).toEqual([{ table_name: "logstream.logs", count: 1 }]);
+  });
+
+  it("returns generic HTTP 500 for a genuine PostgreSQL aggregation failure", async () => {
+    if (ownerBaseUrl === undefined) {
+      throw new Error("Owner PostgreSQL URL is unavailable.");
+    }
+    app = buildHttpApplication(sequentialIdGenerator());
+    const ownerUrl = databaseUrl(ownerBaseUrl, databaseName);
+    const submitted = "submitted-secret-service";
+
+    await withClient(ownerUrl, async (owner) => {
+      await owner.query("REVOKE SELECT ON TABLE logstream.logs FROM logstream_runtime");
+    });
+    let response;
+    try {
+      response = await app.inject({
+        method: "GET",
+        url: `/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&service=${submitted}`,
+      });
+    } finally {
+      await withClient(ownerUrl, async (owner) => {
+        await owner.query("GRANT SELECT ON TABLE logstream.logs TO logstream_runtime");
+      });
+    }
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toBe('{"error":"Internal server error."}');
+    for (const sensitive of [
+      submitted,
+      "42501",
+      "permission denied",
+      "logstream.logs",
+      "SELECT",
+      "postgresql://",
+      "buckets",
+      "count",
+    ]) {
+      expect(response.body).not.toContain(sensitive);
+    }
   });
 });

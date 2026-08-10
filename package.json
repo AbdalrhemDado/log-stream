@@ -14,6 +14,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "benchmark:ingestion": "tsx tools/benchmark/run-ingestion-microbenchmark.ts",
+    "benchmark:query-plans": "tsx tools/benchmark/run-query-plan-review.ts",
     "schema:inspect": "node dist/database/schema-inspection.js",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" \"tools/**/*.ts\" vitest.config.ts",
     "format": "prettier --write .",

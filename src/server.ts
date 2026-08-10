@@ -22,6 +22,8 @@ import {
   ShutdownTimeoutError,
   type ShutdownSignalSource,
 } from "./server-lifecycle.js";
+import { createLogAggregationRepository } from "./modules/aggregation/log-aggregation-repository.js";
+import { createLogAggregationService } from "./modules/aggregation/log-aggregation-service.js";
 import { createIngestionRepository } from "./modules/ingestion/ingestion-repository.js";
 import { createIngestionService } from "./modules/ingestion/ingestion-service.js";
 import { createLogQueryRepository } from "./modules/query/log-query-repository.js";
@@ -60,12 +62,17 @@ async function startRuntime(
     const ingestionService = createIngestionService({ repository: ingestionRepository });
     const logQueryRepository = createLogQueryRepository(databasePool);
     const logQueryService = createLogQueryService({ repository: logQueryRepository });
+    const logAggregationRepository = createLogAggregationRepository(databasePool);
+    const logAggregationService = createLogAggregationService({
+      repository: logAggregationRepository,
+    });
 
     app = buildApp({
       logger: buildLoggerOptions(config),
       readiness,
       databaseProbe: async () => probeDatabase(databasePool),
       ingestionService,
+      logAggregationService,
       logQueryService,
     });
     app.log.info({ attempts: databaseWait.attempts }, "Runtime database verified");

@@ -8,6 +8,14 @@ import type {
   LogId,
   LogInsertionRecord,
 } from "../../src/domain/log-entry.js";
+import type {
+  LogAggregationBucket,
+  LogAggregationRepository,
+} from "../../src/modules/aggregation/log-aggregation-repository.js";
+import {
+  createLogAggregationService,
+  type LogAggregationService,
+} from "../../src/modules/aggregation/log-aggregation-service.js";
 import type { IngestionRepository } from "../../src/modules/ingestion/ingestion-repository.js";
 import { createIngestionService } from "../../src/modules/ingestion/ingestion-service.js";
 import type {
@@ -90,6 +98,25 @@ function createQueryHttpHarness(
   const logQueryService = createLogQueryService({ repository });
 
   return { app: buildApp({ logQueryService }), findPage, logQueryService };
+}
+
+function aggregationBucket(overrides: Partial<LogAggregationBucket> = {}): LogAggregationBucket {
+  return {
+    start: "2026-08-09T11:00:00.000Z" as CanonicalUtcTimestamp,
+    group: null,
+    count: 2,
+    ...overrides,
+  };
+}
+
+function createAggregationHttpHarness(
+  implementation: LogAggregationRepository["aggregate"] = () => Promise.resolve([]),
+) {
+  const aggregate = vi.fn(implementation);
+  const repository: LogAggregationRepository = { aggregate };
+  const logAggregationService = createLogAggregationService({ repository });
+
+  return { app: buildApp({ logAggregationService }), aggregate, logAggregationService };
 }
 
 describe("POST /logs", () => {
@@ -601,5 +628,198 @@ describe("GET /logs", () => {
     expect(response.body).not.toContain("Database operation failed");
     expect(response.body).not.toContain("submitted-secret");
     expect(response.body).not.toContain("next_cursor");
+  });
+});
+
+describe("GET /logs/aggregate", () => {
+  const apps: ReturnType<typeof buildApp>[] = [];
+
+  afterEach(async () => {
+    await Promise.all(apps.splice(0).map(async (app) => app.close()));
+  });
+
+  it("returns the exact ungrouped HTTP 200 response", async () => {
+    const item = aggregationBucket();
+    const { app, aggregate } = createAggregationHttpHarness(() => Promise.resolve([item]));
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ buckets: [item] });
+    expect(Object.keys(response.json<{ buckets: unknown[] }>().buckets[0] ?? {})).toEqual([
+      "start",
+      "group",
+      "count",
+    ]);
+    expect(aggregate).toHaveBeenCalledWith({
+      filters: {
+        attributes: [],
+        since: "2026-08-09T10:00:00.000Z",
+        until: "2026-08-09T12:00:00.000Z",
+      },
+      bucket: "1m",
+    });
+  });
+
+  it("returns grouped and empty responses exactly", async () => {
+    const grouped = createAggregationHttpHarness(() =>
+      Promise.resolve([aggregationBucket({ group: "checkout", count: 1 })]),
+    );
+    const empty = createAggregationHttpHarness();
+    apps.push(grouped.app, empty.app);
+    const url =
+      "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=5m&group_by=service";
+
+    expect((await grouped.app.inject({ method: "GET", url })).json()).toEqual({
+      buckets: [aggregationBucket({ group: "checkout", count: 1 })],
+    });
+    expect((await empty.app.inject({ method: "GET", url })).body).toBe('{"buckets":[]}');
+  });
+
+  it("passes Fastify's raw query object unchanged to an injected service", async () => {
+    const aggregate = vi.fn<LogAggregationService["aggregate"]>(() =>
+      Promise.resolve({ buckets: [] }),
+    );
+    const app = buildApp({ logAggregationService: { aggregate } });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/logs/aggregate?bucket=1m&bucket=5m&metadata=ignored",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(aggregate).toHaveBeenCalledWith({
+      bucket: ["1m", "5m"],
+      metadata: "ignored",
+    });
+  });
+
+  it.each([
+    {
+      name: "missing since",
+      url: "/logs/aggregate?until=2026-08-09T12%3A00%3A00Z&bucket=1m",
+      body: '{"error":"Query parameter \'since\' is required."}',
+    },
+    {
+      name: "missing until",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&bucket=1m",
+      body: '{"error":"Query parameter \'until\' is required."}',
+    },
+    {
+      name: "missing bucket",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z",
+      body: '{"error":"Query parameter \'bucket\' is required."}',
+    },
+    {
+      name: "duplicate bucket",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&bucket=1m",
+      body: '{"error":"Query parameter \'bucket\' must appear at most once."}',
+    },
+    {
+      name: "invalid group",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&group_by=message",
+      body: '{"error":"Query parameter \'group_by\' must be one of service or level."}',
+    },
+    {
+      name: "duplicate group",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&group_by=service&group_by=service",
+      body: '{"error":"Query parameter \'group_by\' must appear at most once."}',
+    },
+    {
+      name: "invalid shared level",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&level=critical",
+      body: '{"error":"Query parameter \'level\' must be one of debug, info, warn, or error."}',
+    },
+    {
+      name: "earlier until",
+      url: "/logs/aggregate?since=2026-08-09T12%3A00%3A00Z&until=2026-08-09T10%3A00%3A00Z&bucket=1m",
+      body: "{\"error\":\"Query parameter 'until' must not be earlier than 'since'.\"}",
+    },
+  ])("returns fixed HTTP 400 for $name without querying", async ({ url, body }) => {
+    const { app, aggregate } = createAggregationHttpHarness();
+    apps.push(app);
+
+    const response = await app.inject({ method: "GET", url });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toBe(body);
+    expect(response.body).not.toContain("buckets");
+    expect(aggregate).not.toHaveBeenCalled();
+  });
+
+  it("maps a transient aggregation failure to generic 503 with Retry-After", async () => {
+    const secret = "postgresql://runtime:secret@database/logstream";
+    const { app } = createAggregationHttpHarness(() => {
+      const error = new TransientServiceError();
+      Object.defineProperty(error, "hidden", { value: secret });
+      return Promise.reject(error);
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&service=submitted-secret",
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.body).toBe('{"error":"Service temporarily unavailable."}');
+    expect(response.headers["retry-after"]).toBe("30");
+    expect(response.body).not.toContain(secret);
+    expect(response.body).not.toContain("submitted-secret");
+    expect(response.body).not.toContain("buckets");
+  });
+
+  it("maps an internal aggregation failure to generic 500", async () => {
+    const { app } = createAggregationHttpHarness(() => Promise.reject(new InternalDatabaseError()));
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m&q=submitted-secret",
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toBe('{"error":"Internal server error."}');
+    expect(response.body).not.toContain("Database operation failed");
+    expect(response.body).not.toContain("submitted-secret");
+    expect(response.body).not.toContain("buckets");
+  });
+
+  it("registers aggregation independently and alongside existing endpoints", async () => {
+    const aggregationOnly = createAggregationHttpHarness().app;
+    const ingestionService = createIngestionService({
+      repository: { insert: () => Promise.resolve() },
+      clock: () => REFERENCE_TIME_MS,
+      generateId: () => logId(1),
+    });
+    const logQueryService: LogQueryService = {
+      list: () => Promise.resolve({ logs: [], next_cursor: null }),
+    };
+    const logAggregationService: LogAggregationService = {
+      aggregate: () => Promise.resolve({ buckets: [] }),
+    };
+    const all = buildApp({ ingestionService, logQueryService, logAggregationService });
+    apps.push(aggregationOnly, all);
+    const aggregationUrl =
+      "/logs/aggregate?since=2026-08-09T10%3A00%3A00Z&until=2026-08-09T12%3A00%3A00Z&bucket=1m";
+
+    expect((await aggregationOnly.inject({ method: "GET", url: aggregationUrl })).statusCode).toBe(
+      200,
+    );
+    expect((await aggregationOnly.inject({ method: "GET", url: "/logs" })).statusCode).toBe(404);
+    expect(
+      (await aggregationOnly.inject({ method: "POST", url: "/logs", payload: { logs: [] } }))
+        .statusCode,
+    ).toBe(404);
+    expect((await all.inject({ method: "GET", url: aggregationUrl })).statusCode).toBe(200);
+    expect((await all.inject({ method: "GET", url: "/logs" })).statusCode).toBe(200);
+    expect(
+      (await all.inject({ method: "POST", url: "/logs", payload: { logs: [] } })).statusCode,
+    ).toBe(400);
   });
 });
