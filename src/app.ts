@@ -4,6 +4,7 @@ import Fastify, { LogController, type FastifyInstance, type FastifyServerOptions
 
 import type { DatabaseProbe } from "./database/database-pool.js";
 import type { IngestionService } from "./modules/ingestion/ingestion-service.js";
+import type { LogQueryService } from "./modules/query/log-query-service.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerLogsRoute } from "./routes/logs.js";
 import { registerErrorHandler } from "./shared/error-handler.js";
@@ -17,6 +18,7 @@ export interface BuildAppOptions {
   readonly readiness?: Readiness;
   readonly databaseProbe?: DatabaseProbe;
   readonly ingestionService?: IngestionService;
+  readonly logQueryService?: LogQueryService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -42,8 +44,15 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   registerErrorHandler(app);
   registerHealthRoute(app, { readiness, databaseProbe });
-  if (options.ingestionService !== undefined) {
-    registerLogsRoute(app, { ingestionService: options.ingestionService });
+  if (options.ingestionService !== undefined || options.logQueryService !== undefined) {
+    registerLogsRoute(app, {
+      ...(options.ingestionService === undefined
+        ? {}
+        : { ingestionService: options.ingestionService }),
+      ...(options.logQueryService === undefined
+        ? {}
+        : { logQueryService: options.logQueryService }),
+    });
   }
 
   return app;

@@ -1,10 +1,24 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "../../src/app.js";
 import { InternalDatabaseError } from "../../src/database/database-errors.js";
-import type { LogId, LogInsertionRecord } from "../../src/domain/log-entry.js";
+import type {
+  ApiLogResponseItem,
+  CanonicalUtcTimestamp,
+  LogId,
+  LogInsertionRecord,
+} from "../../src/domain/log-entry.js";
 import type { IngestionRepository } from "../../src/modules/ingestion/ingestion-repository.js";
 import { createIngestionService } from "../../src/modules/ingestion/ingestion-service.js";
+import type {
+  LogQueryPageRequest,
+  LogQueryRepository,
+} from "../../src/modules/query/log-query-repository.js";
+import { encodeLogCursor } from "../../src/modules/query/cursor-codec.js";
+import {
+  createLogQueryService,
+  type LogQueryService,
+} from "../../src/modules/query/log-query-service.js";
 import { TransientServiceError } from "../../src/shared/app-error.js";
 
 const REFERENCE_TIME_MS = Date.UTC(2026, 7, 9, 12, 0, 0, 0);
@@ -54,6 +68,28 @@ function createHttpHarness(options: HttpHarnessOptions = {}) {
     app: buildApp({ ingestionService }),
     calls,
   };
+}
+
+function queryLog(sequence = 1): ApiLogResponseItem {
+  return {
+    id: logId(sequence),
+    timestamp: VALID_TIMESTAMP as CanonicalUtcTimestamp,
+    level: "info",
+    service: "checkout",
+    message: "payment accepted",
+    attributes: {} as ApiLogResponseItem["attributes"],
+  };
+}
+
+function createQueryHttpHarness(
+  implementation: (request: LogQueryPageRequest) => Promise<readonly ApiLogResponseItem[]> = () =>
+    Promise.resolve([]),
+) {
+  const findPage = vi.fn(implementation);
+  const repository: LogQueryRepository = { findPage };
+  const logQueryService = createLogQueryService({ repository });
+
+  return { app: buildApp({ logQueryService }), findPage, logQueryService };
 }
 
 describe("POST /logs", () => {
@@ -367,5 +403,203 @@ describe("POST /logs", () => {
     expect(response.body).not.toContain("Database operation failed");
     expect(response.body).not.toContain("submitted-secret");
     expect(response.body).not.toContain("accepted");
+  });
+});
+
+describe("GET /logs", () => {
+  const apps: ReturnType<typeof buildApp>[] = [];
+
+  afterEach(async () => {
+    await Promise.all(apps.splice(0).map(async (app) => app.close()));
+  });
+
+  it("returns the exact successful query response with HTTP 200", async () => {
+    const item = queryLog();
+    const { app, findPage } = createQueryHttpHarness(() => Promise.resolve([item]));
+    apps.push(app);
+
+    const response = await app.inject({ method: "GET", url: "/logs?service=checkout&limit=2" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ logs: [item], next_cursor: null });
+    expect(findPage).toHaveBeenCalledWith({
+      filters: { attributes: [], service: "checkout" },
+      limit: 2,
+    });
+  });
+
+  it("passes Fastify's raw query object unchanged to an injected query service", async () => {
+    const list = vi.fn<LogQueryService["list"]>(() =>
+      Promise.resolve({ logs: [], next_cursor: null }),
+    );
+    const logQueryService: LogQueryService = { list };
+    const app = buildApp({ logQueryService });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/logs?service=checkout&service=auth&metadata=ignored",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(list).toHaveBeenCalledOnce();
+    expect(list.mock.calls[0]?.[0]).toEqual({
+      service: ["checkout", "auth"],
+      metadata: "ignored",
+    });
+  });
+
+  it("registers GET and POST independently and together", async () => {
+    const queryOnly = createQueryHttpHarness().app;
+    const ingestionOnly = createHttpHarness().app;
+    const ingestionService = createIngestionService({
+      repository: { insert: () => Promise.resolve() },
+      clock: () => REFERENCE_TIME_MS,
+      generateId: () => logId(1),
+    });
+    const logQueryService: LogQueryService = {
+      list: () => Promise.resolve({ logs: [], next_cursor: null }),
+    };
+    const both = buildApp({ ingestionService, logQueryService });
+    apps.push(queryOnly, ingestionOnly, both);
+
+    expect((await queryOnly.inject({ method: "GET", url: "/logs" })).statusCode).toBe(200);
+    expect(
+      (await queryOnly.inject({ method: "POST", url: "/logs", payload: { logs: [] } })).statusCode,
+    ).toBe(404);
+    expect((await ingestionOnly.inject({ method: "GET", url: "/logs" })).statusCode).toBe(404);
+    expect(
+      (await ingestionOnly.inject({ method: "POST", url: "/logs", payload: { logs: [] } }))
+        .statusCode,
+    ).toBe(400);
+    expect((await both.inject({ method: "GET", url: "/logs" })).statusCode).toBe(200);
+    expect(
+      (await both.inject({ method: "POST", url: "/logs", payload: { logs: [] } })).statusCode,
+    ).toBe(400);
+  });
+
+  it("returns QRY-004 HTTP 400 and never calls the repository when until is earlier", async () => {
+    const { app, findPage } = createQueryHttpHarness();
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/logs?since=2026-08-09T12%3A00%3A00.000Z&until=2026-08-09T11%3A59%3A59.999Z",
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toBe(
+      "{\"error\":\"Query parameter 'until' must not be earlier than 'since'.\"}",
+    );
+    expect(findPage).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: "duplicate scalar",
+      url: "/logs?service=checkout&service=checkout",
+      body: '{"error":"Query parameter \'service\' must appear at most once."}',
+    },
+    {
+      name: "malformed cursor",
+      url: "/logs?cursor=not-a-valid-cursor",
+      body: '{"error":"Query parameter \'cursor\' is invalid."}',
+    },
+    {
+      name: "PostgreSQL-incompatible NUL",
+      url: "/logs?service=unsafe%00service",
+      body: '{"error":"Query parameter \'service\' must not contain U+0000."}',
+    },
+  ])("returns the fixed HTTP 400 envelope for $name before querying", async ({ url, body }) => {
+    const { app, findPage } = createQueryHttpHarness();
+    apps.push(app);
+
+    const response = await app.inject({ method: "GET", url });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toBe(body);
+    expect(findPage).not.toHaveBeenCalled();
+  });
+
+  it("rejects a structurally valid cursor bound to different normalized filters", async () => {
+    const cursorSourceFilter = "cursor-source";
+    const submittedFilter = "cursor-target";
+    const token = encodeLogCursor(
+      {
+        timestamp: VALID_TIMESTAMP as CanonicalUtcTimestamp,
+        id: logId(9),
+      },
+      { attributes: [], service: cursorSourceFilter },
+    );
+    const { app, findPage } = createQueryHttpHarness();
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/logs?service=${submittedFilter}&cursor=${encodeURIComponent(token)}`,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toBe('{"error":"Query parameter \'cursor\' is invalid."}');
+    expect(findPage).not.toHaveBeenCalled();
+    for (const sensitiveText of [
+      token,
+      cursorSourceFilter,
+      submittedFilter,
+      "filterFingerprint",
+      "SELECT",
+      "logstream.logs",
+      "postgresql://",
+    ]) {
+      expect(response.body).not.toContain(sensitiveText);
+    }
+  });
+
+  it("ignores unknown query parameters while preserving recognized filters", async () => {
+    const { app, findPage } = createQueryHttpHarness();
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/logs?metadata=one&metadata=two&servce=ignored&service=checkout",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(findPage).toHaveBeenCalledWith({
+      filters: { attributes: [], service: "checkout" },
+      limit: 100,
+    });
+  });
+
+  it("maps a transient query failure to generic 503 with Retry-After", async () => {
+    const secret = "postgresql://runtime:secret@database/logstream";
+    const { app } = createQueryHttpHarness(() => {
+      const error = new TransientServiceError();
+      Object.defineProperty(error, "hidden", { value: secret });
+      return Promise.reject(error);
+    });
+    apps.push(app);
+
+    const response = await app.inject({ method: "GET", url: "/logs?service=submitted-secret" });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.body).toBe('{"error":"Service temporarily unavailable."}');
+    expect(response.headers["retry-after"]).toBe("30");
+    expect(response.body).not.toContain(secret);
+    expect(response.body).not.toContain("submitted-secret");
+    expect(response.body).not.toContain("logs");
+  });
+
+  it("maps an internal query failure to generic 500 without a success body", async () => {
+    const { app } = createQueryHttpHarness(() => Promise.reject(new InternalDatabaseError()));
+    apps.push(app);
+
+    const response = await app.inject({ method: "GET", url: "/logs?q=submitted-secret" });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toBe('{"error":"Internal server error."}');
+    expect(response.body).not.toContain("Database operation failed");
+    expect(response.body).not.toContain("submitted-secret");
+    expect(response.body).not.toContain("next_cursor");
   });
 });

@@ -24,6 +24,8 @@ import {
 } from "./server-lifecycle.js";
 import { createIngestionRepository } from "./modules/ingestion/ingestion-repository.js";
 import { createIngestionService } from "./modules/ingestion/ingestion-service.js";
+import { createLogQueryRepository } from "./modules/query/log-query-repository.js";
+import { createLogQueryService } from "./modules/query/log-query-service.js";
 import { buildLoggerOptions } from "./shared/logging.js";
 import { createReadiness } from "./shared/readiness.js";
 
@@ -56,12 +58,15 @@ async function startRuntime(
 
     const ingestionRepository = createIngestionRepository(databasePool);
     const ingestionService = createIngestionService({ repository: ingestionRepository });
+    const logQueryRepository = createLogQueryRepository(databasePool);
+    const logQueryService = createLogQueryService({ repository: logQueryRepository });
 
     app = buildApp({
       logger: buildLoggerOptions(config),
       readiness,
       databaseProbe: async () => probeDatabase(databasePool),
       ingestionService,
+      logQueryService,
     });
     app.log.info({ attempts: databaseWait.attempts }, "Runtime database verified");
   } catch (error: unknown) {
