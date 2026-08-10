@@ -1,0 +1,4549 @@
+{
+  "schemaVersion": 1,
+  "run": {
+    "timestampUtc": "2026-08-10T11:25:50.919Z",
+    "baseCommit": "070c61d25c78b001ded711a5f5365a446902bfc2",
+    "branch": "feat/log-aggregation",
+    "workingTreeDirty": true,
+    "task63PathsUncommitted": true,
+    "sourceState": "Task 6.3 query-plan paths have uncommitted changes."
+  },
+  "environment": {
+    "nodeVersion": "v24.18.0",
+    "npmVersion": "11.16.0",
+    "platform": "win32",
+    "release": "10.0.26200",
+    "architecture": "x64",
+    "cpuModel": "Intel(R) Core(TM) i5-14400F",
+    "logicalCpuCount": 16,
+    "hostMemoryBytes": 34187763712,
+    "dockerVersion": "29.6.2",
+    "postgresImage": "postgres:16.14-bookworm",
+    "postgresVersion": "16.14 (Debian 16.14-1.pgdg12+1)"
+  },
+  "dockerControls": {
+    "nanoCpus": 1000000000,
+    "memoryBytes": 1073741824,
+    "autoRemove": true,
+    "persistentMountCount": 0
+  },
+  "applicationProcess": {
+    "constrainedToCompanyLimit": false,
+    "note": "The TypeScript review process ran on the host; only disposable PostgreSQL used the 1 CPU/1 GiB controls."
+  },
+  "configuration": {
+    "seed": 20260810,
+    "rows": 1000000,
+    "referenceTimeUtc": "2026-08-10T11:25:21.418Z",
+    "datasetWindowDays": 30,
+    "poolMaximum": 4,
+    "queryOrder": [
+      "recent-unfiltered-list",
+      "service-time-list",
+      "level-time-list",
+      "attribute-filtered-list",
+      "literal-message-search-list",
+      "primary-aggregation"
+    ],
+    "generatorVersion": 1,
+    "generatorFormula": "Ordinals are evenly distributed across (reference-30d, reference); service=shifted mod 100, level=shifted mod 4, empty attributes=shifted mod 10, tenant=shifted mod 1000, marker=shifted mod 1000, shifted=ordinal+seed.",
+    "explainClause": "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON, SETTINGS)",
+    "roleTimezoneDefaultApplied": true,
+    "plannerOrTuningSettingsChanged": false
+  },
+  "postgresSettings": {
+    "effective_cache_size": "524288",
+    "jit": "on",
+    "max_parallel_workers_per_gather": "2",
+    "random_page_cost": "4",
+    "seq_page_cost": "1",
+    "shared_buffers": "16384",
+    "TimeZone": "UTC",
+    "work_mem": "4096"
+  },
+  "database": {
+    "dataset": {
+      "rows": 1000000,
+      "emptyAttributes": 100000,
+      "service007": 10000,
+      "errorLevel": 250000,
+      "tenant000123": 1000,
+      "messageMarker": 1000,
+      "defaultPartitionRows": 0,
+      "minimumTimestamp": "2026-07-11T11:25:21.418000Z",
+      "maximumTimestamp": "2026-08-10T11:25:18.826000Z",
+      "partitionCount": 31
+    },
+    "indexes": [
+      {
+        "table": "logs",
+        "name": "logs_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_pkey ON ONLY logstream.logs USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs",
+        "name": "logs_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_service_timestamp_id_idx ON ONLY logstream.logs USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260711",
+        "name": "logs_20260711_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260711_pkey ON logstream.logs_20260711 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260711",
+        "name": "logs_20260711_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260711_service_timestamp_id_idx ON logstream.logs_20260711 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260712",
+        "name": "logs_20260712_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260712_pkey ON logstream.logs_20260712 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260712",
+        "name": "logs_20260712_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260712_service_timestamp_id_idx ON logstream.logs_20260712 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260713",
+        "name": "logs_20260713_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260713_pkey ON logstream.logs_20260713 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260713",
+        "name": "logs_20260713_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260713_service_timestamp_id_idx ON logstream.logs_20260713 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260714",
+        "name": "logs_20260714_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260714_pkey ON logstream.logs_20260714 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260714",
+        "name": "logs_20260714_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260714_service_timestamp_id_idx ON logstream.logs_20260714 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260715",
+        "name": "logs_20260715_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260715_pkey ON logstream.logs_20260715 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260715",
+        "name": "logs_20260715_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260715_service_timestamp_id_idx ON logstream.logs_20260715 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260716",
+        "name": "logs_20260716_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260716_pkey ON logstream.logs_20260716 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260716",
+        "name": "logs_20260716_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260716_service_timestamp_id_idx ON logstream.logs_20260716 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260717",
+        "name": "logs_20260717_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260717_pkey ON logstream.logs_20260717 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260717",
+        "name": "logs_20260717_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260717_service_timestamp_id_idx ON logstream.logs_20260717 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260718",
+        "name": "logs_20260718_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260718_pkey ON logstream.logs_20260718 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260718",
+        "name": "logs_20260718_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260718_service_timestamp_id_idx ON logstream.logs_20260718 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260719",
+        "name": "logs_20260719_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260719_pkey ON logstream.logs_20260719 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260719",
+        "name": "logs_20260719_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260719_service_timestamp_id_idx ON logstream.logs_20260719 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260720",
+        "name": "logs_20260720_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260720_pkey ON logstream.logs_20260720 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260720",
+        "name": "logs_20260720_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260720_service_timestamp_id_idx ON logstream.logs_20260720 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260721",
+        "name": "logs_20260721_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260721_pkey ON logstream.logs_20260721 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260721",
+        "name": "logs_20260721_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260721_service_timestamp_id_idx ON logstream.logs_20260721 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260722",
+        "name": "logs_20260722_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260722_pkey ON logstream.logs_20260722 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260722",
+        "name": "logs_20260722_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260722_service_timestamp_id_idx ON logstream.logs_20260722 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260723",
+        "name": "logs_20260723_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260723_pkey ON logstream.logs_20260723 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260723",
+        "name": "logs_20260723_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260723_service_timestamp_id_idx ON logstream.logs_20260723 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260724",
+        "name": "logs_20260724_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260724_pkey ON logstream.logs_20260724 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260724",
+        "name": "logs_20260724_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260724_service_timestamp_id_idx ON logstream.logs_20260724 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260725",
+        "name": "logs_20260725_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260725_pkey ON logstream.logs_20260725 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260725",
+        "name": "logs_20260725_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260725_service_timestamp_id_idx ON logstream.logs_20260725 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260726",
+        "name": "logs_20260726_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260726_pkey ON logstream.logs_20260726 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260726",
+        "name": "logs_20260726_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260726_service_timestamp_id_idx ON logstream.logs_20260726 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260727",
+        "name": "logs_20260727_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260727_pkey ON logstream.logs_20260727 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260727",
+        "name": "logs_20260727_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260727_service_timestamp_id_idx ON logstream.logs_20260727 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260728",
+        "name": "logs_20260728_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260728_pkey ON logstream.logs_20260728 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260728",
+        "name": "logs_20260728_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260728_service_timestamp_id_idx ON logstream.logs_20260728 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260729",
+        "name": "logs_20260729_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260729_pkey ON logstream.logs_20260729 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260729",
+        "name": "logs_20260729_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260729_service_timestamp_id_idx ON logstream.logs_20260729 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260730",
+        "name": "logs_20260730_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260730_pkey ON logstream.logs_20260730 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260730",
+        "name": "logs_20260730_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260730_service_timestamp_id_idx ON logstream.logs_20260730 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260731",
+        "name": "logs_20260731_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260731_pkey ON logstream.logs_20260731 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260731",
+        "name": "logs_20260731_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260731_service_timestamp_id_idx ON logstream.logs_20260731 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260801",
+        "name": "logs_20260801_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260801_pkey ON logstream.logs_20260801 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260801",
+        "name": "logs_20260801_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260801_service_timestamp_id_idx ON logstream.logs_20260801 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260802",
+        "name": "logs_20260802_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260802_pkey ON logstream.logs_20260802 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260802",
+        "name": "logs_20260802_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260802_service_timestamp_id_idx ON logstream.logs_20260802 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260803",
+        "name": "logs_20260803_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260803_pkey ON logstream.logs_20260803 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260803",
+        "name": "logs_20260803_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260803_service_timestamp_id_idx ON logstream.logs_20260803 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260804",
+        "name": "logs_20260804_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260804_pkey ON logstream.logs_20260804 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260804",
+        "name": "logs_20260804_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260804_service_timestamp_id_idx ON logstream.logs_20260804 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260805",
+        "name": "logs_20260805_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260805_pkey ON logstream.logs_20260805 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260805",
+        "name": "logs_20260805_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260805_service_timestamp_id_idx ON logstream.logs_20260805 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260806",
+        "name": "logs_20260806_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260806_pkey ON logstream.logs_20260806 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260806",
+        "name": "logs_20260806_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260806_service_timestamp_id_idx ON logstream.logs_20260806 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260807",
+        "name": "logs_20260807_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260807_pkey ON logstream.logs_20260807 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260807",
+        "name": "logs_20260807_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260807_service_timestamp_id_idx ON logstream.logs_20260807 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260808",
+        "name": "logs_20260808_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260808_pkey ON logstream.logs_20260808 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260808",
+        "name": "logs_20260808_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260808_service_timestamp_id_idx ON logstream.logs_20260808 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260809",
+        "name": "logs_20260809_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260809_pkey ON logstream.logs_20260809 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260809",
+        "name": "logs_20260809_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260809_service_timestamp_id_idx ON logstream.logs_20260809 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260810",
+        "name": "logs_20260810_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260810_pkey ON logstream.logs_20260810 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260810",
+        "name": "logs_20260810_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260810_service_timestamp_id_idx ON logstream.logs_20260810 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260811",
+        "name": "logs_20260811_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260811_pkey ON logstream.logs_20260811 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260811",
+        "name": "logs_20260811_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260811_service_timestamp_id_idx ON logstream.logs_20260811 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_20260812",
+        "name": "logs_20260812_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_20260812_pkey ON logstream.logs_20260812 USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_20260812",
+        "name": "logs_20260812_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_20260812_service_timestamp_id_idx ON logstream.logs_20260812 USING btree (service, \"timestamp\" DESC, id DESC)"
+      },
+      {
+        "table": "logs_default",
+        "name": "logs_default_pkey",
+        "definition": "CREATE UNIQUE INDEX logs_default_pkey ON logstream.logs_default USING btree (\"timestamp\", id)"
+      },
+      {
+        "table": "logs_default",
+        "name": "logs_default_service_timestamp_id_idx",
+        "definition": "CREATE INDEX logs_default_service_timestamp_id_idx ON logstream.logs_default USING btree (service, \"timestamp\" DESC, id DESC)"
+      }
+    ],
+    "relationSizes": [
+      {
+        "name": "logs_pkey",
+        "kind": "I",
+        "bytes": 0
+      },
+      {
+        "name": "logs_service_timestamp_id_idx",
+        "kind": "I",
+        "bytes": 0
+      },
+      {
+        "name": "logs_20260711_pkey",
+        "kind": "i",
+        "bytes": 1286144
+      },
+      {
+        "name": "logs_20260711_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 1654784
+      },
+      {
+        "name": "logs_20260712_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260712_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260713_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260713_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260714_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260714_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260715_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260715_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260716_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260716_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260717_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260717_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260718_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260718_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260719_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260719_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260720_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260720_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260721_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260721_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260722_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260722_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260723_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260723_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260724_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260724_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260725_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260725_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260726_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260726_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260727_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260727_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260728_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260728_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260729_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260729_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260730_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260730_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260731_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260731_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260801_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260801_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260802_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260802_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260803_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260803_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260804_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260804_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260805_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260805_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260806_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260806_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260807_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260807_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260808_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260808_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260809_pkey",
+        "kind": "i",
+        "bytes": 2433024
+      },
+      {
+        "name": "logs_20260809_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 3309568
+      },
+      {
+        "name": "logs_20260810_pkey",
+        "kind": "i",
+        "bytes": 1171456
+      },
+      {
+        "name": "logs_20260810_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 1310720
+      },
+      {
+        "name": "logs_20260811_pkey",
+        "kind": "i",
+        "bytes": 8192
+      },
+      {
+        "name": "logs_20260811_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 8192
+      },
+      {
+        "name": "logs_20260812_pkey",
+        "kind": "i",
+        "bytes": 8192
+      },
+      {
+        "name": "logs_20260812_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 8192
+      },
+      {
+        "name": "logs_default_pkey",
+        "kind": "i",
+        "bytes": 8192
+      },
+      {
+        "name": "logs_default_service_timestamp_id_idx",
+        "kind": "i",
+        "bytes": 8192
+      },
+      {
+        "name": "logs",
+        "kind": "p",
+        "bytes": 0
+      },
+      {
+        "name": "logs_20260711",
+        "kind": "r",
+        "bytes": 4956160
+      },
+      {
+        "name": "logs_20260712",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260713",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260714",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260715",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260716",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260717",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260718",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260719",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260720",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260721",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260722",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260723",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260724",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260725",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260726",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260727",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260728",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260729",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260730",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260731",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260801",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260802",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260803",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260804",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260805",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260806",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260807",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260808",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260809",
+        "kind": "r",
+        "bytes": 9453568
+      },
+      {
+        "name": "logs_20260810",
+        "kind": "r",
+        "bytes": 4448256
+      },
+      {
+        "name": "logs_20260811",
+        "kind": "r",
+        "bytes": 0
+      },
+      {
+        "name": "logs_20260812",
+        "kind": "r",
+        "bytes": 0
+      },
+      {
+        "name": "logs_default",
+        "kind": "r",
+        "bytes": 0
+      }
+    ]
+  },
+  "queries": [
+    {
+      "id": "recent-unfiltered-list",
+      "kind": "list",
+      "description": "Newest 24-hour page without a dimension filter.",
+      "request": {
+        "since": "2026-08-09T11:25:21.418Z",
+        "until": "2026-08-10T11:25:21.418Z",
+        "limit": "100"
+      },
+      "sql": "\nSELECT\n  logs.id::text AS id,\n  to_char(\n    logs.\"timestamp\" AT TIME ZONE 'UTC',\n    'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'\n  ) AS timestamp,\n  logs.level,\n  logs.service,\n  logs.message,\n  logs.attributes\nFROM logstream.logs AS logs\nWHERE \"timestamp\" >= $1::timestamptz AND \"timestamp\" < $2::timestamptz\nORDER BY logs.\"timestamp\" DESC, logs.id DESC\nLIMIT $3::integer\n",
+      "parameters": [
+        "2026-08-09T11:25:21.418Z",
+        "2026-08-10T11:25:21.418Z",
+        101
+      ],
+      "matchingRows": 33333,
+      "resultRows": 101,
+      "resultChecksum": "6a4648b9",
+      "rawPlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.57,
+          "Total Cost": 18.71,
+          "Plan Rows": 101,
+          "Plan Width": 216,
+          "Actual Startup Time": 0.013,
+          "Actual Total Time": 0.08,
+          "Actual Rows": 101,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 4,
+          "Shared Read Blocks": 4,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Append",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.57,
+              "Total Cost": 5980.56,
+              "Plan Rows": 33304,
+              "Plan Width": 216,
+              "Actual Startup Time": 0.012,
+              "Actual Total Time": 0.075,
+              "Actual Rows": 101,
+              "Actual Loops": 1,
+              "Shared Hit Blocks": 4,
+              "Shared Read Blocks": 4,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Subplans Removed": 0,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260810_pkey",
+                  "Relation Name": "logs_20260810",
+                  "Alias": "logs_2",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 2305.61,
+                  "Plan Rows": 15864,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0.012,
+                  "Actual Total Time": 0.07,
+                  "Actual Rows": 101,
+                  "Actual Loops": 1,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-09 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 4,
+                  "Shared Read Blocks": 4,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260809_pkey",
+                  "Relation Name": "logs_20260809",
+                  "Alias": "logs_1",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 3508.43,
+                  "Plan Rows": 17440,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-09 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning Time": 2.794,
+        "Execution Time": 0.101,
+        "Planning": {
+          "Shared Hit Blocks": 53,
+          "Shared Read Blocks": 17,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Settings": {}
+      },
+      "summary": {
+        "topLevelNodeType": "Limit",
+        "planningTimeMs": 2.794,
+        "executionTimeMs": 0.101,
+        "rootActualRows": 101,
+        "rootBuffers": {
+          "sharedHit": 4,
+          "sharedRead": 4,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "planningBuffers": {
+          "sharedHit": 53,
+          "sharedRead": 17,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "nodes": [
+          {
+            "path": "0",
+            "nodeType": "Limit",
+            "plannedRows": 101,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 1,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 4,
+              "sharedRead": 4,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0",
+            "nodeType": "Append",
+            "plannedRows": 33304,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 329.74257425742576,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 4,
+              "sharedRead": 4,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260810",
+            "alias": "logs_2",
+            "indexName": "logs_20260810_pkey",
+            "plannedRows": 15864,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 157.06930693069307,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 4,
+              "sharedRead": 4,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.1",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260809",
+            "alias": "logs_1",
+            "indexName": "logs_20260809_pkey",
+            "plannedRows": 17440,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          }
+        ],
+        "scanTypes": [
+          "Index Scan"
+        ],
+        "partitionsPlanned": [
+          "logs_20260809",
+          "logs_20260810"
+        ],
+        "partitionsExecuted": [
+          "logs_20260810"
+        ],
+        "defaultPartitionPlanned": false,
+        "defaultPartitionExecuted": false,
+        "incrementalSortOccurred": false,
+        "subplansRemoved": 0,
+        "spillDetected": false
+      }
+    },
+    {
+      "id": "service-time-list",
+      "kind": "list",
+      "description": "Selective service filter over seven days.",
+      "request": {
+        "service": "service-007",
+        "since": "2026-08-03T11:25:21.418Z",
+        "until": "2026-08-10T11:25:21.418Z",
+        "limit": "100"
+      },
+      "sql": "\nSELECT\n  logs.id::text AS id,\n  to_char(\n    logs.\"timestamp\" AT TIME ZONE 'UTC',\n    'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'\n  ) AS timestamp,\n  logs.level,\n  logs.service,\n  logs.message,\n  logs.attributes\nFROM logstream.logs AS logs\nWHERE service = $1::text AND \"timestamp\" >= $2::timestamptz AND \"timestamp\" < $3::timestamptz\nORDER BY logs.\"timestamp\" DESC, logs.id DESC\nLIMIT $4::integer\n",
+      "parameters": [
+        "service-007",
+        "2026-08-03T11:25:21.418Z",
+        "2026-08-10T11:25:21.418Z",
+        101
+      ],
+      "matchingRows": 2333,
+      "resultRows": 101,
+      "resultChecksum": "664ef704",
+      "rawPlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 3.19,
+          "Total Cost": 368.19,
+          "Plan Rows": 101,
+          "Plan Width": 216,
+          "Actual Startup Time": 0.128,
+          "Actual Total Time": 0.245,
+          "Actual Rows": 101,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 101,
+          "Shared Read Blocks": 3,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Append",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 3.19,
+              "Total Cost": 8401.9,
+              "Plan Rows": 2324,
+              "Plan Width": 216,
+              "Actual Startup Time": 0.127,
+              "Actual Total Time": 0.239,
+              "Actual Rows": 101,
+              "Actual Loops": 1,
+              "Shared Hit Blocks": 101,
+              "Shared Read Blocks": 3,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Subplans Removed": 0,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "logs_20260810_service_timestamp_id_idx",
+                  "Relation Name": "logs_20260810",
+                  "Alias": "logs_8",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 565.38,
+                  "Plan Rows": 158,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0.127,
+                  "Actual Total Time": 0.234,
+                  "Actual Rows": 101,
+                  "Actual Loops": 1,
+                  "Index Cond": "((service = 'service-007'::text) AND (\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 101,
+                  "Shared Read Blocks": 3,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "logs_20260809_service_timestamp_id_idx",
+                  "Relation Name": "logs_20260809",
+                  "Alias": "logs_7",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 1223.47,
+                  "Plan Rows": 342,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((service = 'service-007'::text) AND (\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "logs_20260808_service_timestamp_id_idx",
+                  "Relation Name": "logs_20260808",
+                  "Alias": "logs_6",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 1178.99,
+                  "Plan Rows": 328,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((service = 'service-007'::text) AND (\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "logs_20260807_service_timestamp_id_idx",
+                  "Relation Name": "logs_20260807",
+                  "Alias": "logs_5",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 1191.12,
+                  "Plan Rows": 331,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((service = 'service-007'::text) AND (\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "logs_20260806_service_timestamp_id_idx",
+                  "Relation Name": "logs_20260806",
+                  "Alias": "logs_4",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 1199.17,
+                  "Plan Rows": 333,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((service = 'service-007'::text) AND (\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "logs_20260805_service_timestamp_id_idx",
+                  "Relation Name": "logs_20260805",
+                  "Alias": "logs_3",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 1207.27,
+                  "Plan Rows": 336,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((service = 'service-007'::text) AND (\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "logs_20260804_service_timestamp_id_idx",
+                  "Relation Name": "logs_20260804",
+                  "Alias": "logs_2",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 1170.98,
+                  "Plan Rows": 326,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((service = 'service-007'::text) AND (\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "logs_20260803_service_timestamp_id_idx",
+                  "Relation Name": "logs_20260803",
+                  "Alias": "logs_1",
+                  "Startup Cost": 0.41,
+                  "Total Cost": 653.9,
+                  "Plan Rows": 170,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((service = 'service-007'::text) AND (\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning Time": 3.877,
+        "Execution Time": 0.278,
+        "Planning": {
+          "Shared Hit Blocks": 34,
+          "Shared Read Blocks": 29,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Settings": {}
+      },
+      "summary": {
+        "topLevelNodeType": "Limit",
+        "planningTimeMs": 3.877,
+        "executionTimeMs": 0.278,
+        "rootActualRows": 101,
+        "rootBuffers": {
+          "sharedHit": 101,
+          "sharedRead": 3,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "planningBuffers": {
+          "sharedHit": 34,
+          "sharedRead": 29,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "nodes": [
+          {
+            "path": "0",
+            "nodeType": "Limit",
+            "plannedRows": 101,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 1,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 101,
+              "sharedRead": 3,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0",
+            "nodeType": "Append",
+            "plannedRows": 2324,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 23.00990099009901,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 101,
+              "sharedRead": 3,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260810",
+            "alias": "logs_8",
+            "indexName": "logs_20260810_service_timestamp_id_idx",
+            "plannedRows": 158,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 1.5643564356435644,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 101,
+              "sharedRead": 3,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.1",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260809",
+            "alias": "logs_7",
+            "indexName": "logs_20260809_service_timestamp_id_idx",
+            "plannedRows": 342,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.2",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260808",
+            "alias": "logs_6",
+            "indexName": "logs_20260808_service_timestamp_id_idx",
+            "plannedRows": 328,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.3",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260807",
+            "alias": "logs_5",
+            "indexName": "logs_20260807_service_timestamp_id_idx",
+            "plannedRows": 331,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.4",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260806",
+            "alias": "logs_4",
+            "indexName": "logs_20260806_service_timestamp_id_idx",
+            "plannedRows": 333,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.5",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260805",
+            "alias": "logs_3",
+            "indexName": "logs_20260805_service_timestamp_id_idx",
+            "plannedRows": 336,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.6",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260804",
+            "alias": "logs_2",
+            "indexName": "logs_20260804_service_timestamp_id_idx",
+            "plannedRows": 326,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.7",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260803",
+            "alias": "logs_1",
+            "indexName": "logs_20260803_service_timestamp_id_idx",
+            "plannedRows": 170,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          }
+        ],
+        "scanTypes": [
+          "Index Scan"
+        ],
+        "partitionsPlanned": [
+          "logs_20260803",
+          "logs_20260804",
+          "logs_20260805",
+          "logs_20260806",
+          "logs_20260807",
+          "logs_20260808",
+          "logs_20260809",
+          "logs_20260810"
+        ],
+        "partitionsExecuted": [
+          "logs_20260810"
+        ],
+        "defaultPartitionPlanned": false,
+        "defaultPartitionExecuted": false,
+        "incrementalSortOccurred": false,
+        "subplansRemoved": 0,
+        "spillDetected": false
+      }
+    },
+    {
+      "id": "level-time-list",
+      "kind": "list",
+      "description": "Low-cardinality level filter over seven days.",
+      "request": {
+        "level": "error",
+        "since": "2026-08-03T11:25:21.418Z",
+        "until": "2026-08-10T11:25:21.418Z",
+        "limit": "100"
+      },
+      "sql": "\nSELECT\n  logs.id::text AS id,\n  to_char(\n    logs.\"timestamp\" AT TIME ZONE 'UTC',\n    'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'\n  ) AS timestamp,\n  logs.level,\n  logs.service,\n  logs.message,\n  logs.attributes\nFROM logstream.logs AS logs\nWHERE level = $1::text AND \"timestamp\" >= $2::timestamptz AND \"timestamp\" < $3::timestamptz\nORDER BY logs.\"timestamp\" DESC, logs.id DESC\nLIMIT $4::integer\n",
+      "parameters": [
+        "error",
+        "2026-08-03T11:25:21.418Z",
+        "2026-08-10T11:25:21.418Z",
+        101
+      ],
+      "matchingRows": 58333,
+      "resultRows": 101,
+      "resultChecksum": "f25f7d90",
+      "rawPlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 2.31,
+          "Total Cost": 61.41,
+          "Plan Rows": 101,
+          "Plan Width": 216,
+          "Actual Startup Time": 0.01,
+          "Actual Total Time": 0.107,
+          "Actual Rows": 101,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 25,
+          "Shared Read Blocks": 3,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Append",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 2.31,
+              "Total Cost": 34088.25,
+              "Plan Rows": 58260,
+              "Plan Width": 216,
+              "Actual Startup Time": 0.009,
+              "Actual Total Time": 0.102,
+              "Actual Rows": 101,
+              "Actual Loops": 1,
+              "Shared Hit Blocks": 25,
+              "Shared Read Blocks": 3,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Subplans Removed": 0,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260810_pkey",
+                  "Relation Name": "logs_20260810",
+                  "Alias": "logs_8",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 2226.29,
+                  "Plan Rows": 3966,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0.009,
+                  "Actual Total Time": 0.097,
+                  "Actual Rows": 101,
+                  "Actual Loops": 1,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Filter": "(level = 'error'::text)",
+                  "Rows Removed by Filter": 301,
+                  "Shared Hit Blocks": 25,
+                  "Shared Read Blocks": 3,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260809_pkey",
+                  "Relation Name": "logs_20260809",
+                  "Alias": "logs_7",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 4691.62,
+                  "Plan Rows": 8300,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Filter": "(level = 'error'::text)",
+                  "Rows Removed by Filter": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260808_pkey",
+                  "Relation Name": "logs_20260808",
+                  "Alias": "logs_6",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 4691.73,
+                  "Plan Rows": 8313,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Filter": "(level = 'error'::text)",
+                  "Rows Removed by Filter": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260807_pkey",
+                  "Relation Name": "logs_20260807",
+                  "Alias": "logs_5",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 4691.84,
+                  "Plan Rows": 8324,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Filter": "(level = 'error'::text)",
+                  "Rows Removed by Filter": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260806_pkey",
+                  "Relation Name": "logs_20260806",
+                  "Alias": "logs_4",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 4692.28,
+                  "Plan Rows": 8366,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Filter": "(level = 'error'::text)",
+                  "Rows Removed by Filter": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260805_pkey",
+                  "Relation Name": "logs_20260805",
+                  "Alias": "logs_3",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 4691.91,
+                  "Plan Rows": 8332,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Filter": "(level = 'error'::text)",
+                  "Rows Removed by Filter": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260804_pkey",
+                  "Relation Name": "logs_20260804",
+                  "Alias": "logs_2",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 4691.82,
+                  "Plan Rows": 8323,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Filter": "(level = 'error'::text)",
+                  "Rows Removed by Filter": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Member",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Backward",
+                  "Index Name": "logs_20260803_pkey",
+                  "Relation Name": "logs_20260803",
+                  "Alias": "logs_1",
+                  "Startup Cost": 0.29,
+                  "Total Cost": 3419.46,
+                  "Plan Rows": 4336,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 0,
+                  "Actual Total Time": 0,
+                  "Actual Rows": 0,
+                  "Actual Loops": 0,
+                  "Index Cond": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                  "Rows Removed by Index Recheck": 0,
+                  "Filter": "(level = 'error'::text)",
+                  "Rows Removed by Filter": 0,
+                  "Shared Hit Blocks": 0,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning Time": 0.818,
+        "Execution Time": 0.135,
+        "Planning": {
+          "Shared Hit Blocks": 49,
+          "Shared Read Blocks": 2,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Settings": {}
+      },
+      "summary": {
+        "topLevelNodeType": "Limit",
+        "planningTimeMs": 0.818,
+        "executionTimeMs": 0.135,
+        "rootActualRows": 101,
+        "rootBuffers": {
+          "sharedHit": 25,
+          "sharedRead": 3,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "planningBuffers": {
+          "sharedHit": 49,
+          "sharedRead": 2,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "nodes": [
+          {
+            "path": "0",
+            "nodeType": "Limit",
+            "plannedRows": 101,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 1,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 25,
+              "sharedRead": 3,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0",
+            "nodeType": "Append",
+            "plannedRows": 58260,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 576.8316831683169,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 25,
+              "sharedRead": 3,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260810",
+            "alias": "logs_8",
+            "indexName": "logs_20260810_pkey",
+            "plannedRows": 3966,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 39.26732673267327,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 25,
+              "sharedRead": 3,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.1",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260809",
+            "alias": "logs_7",
+            "indexName": "logs_20260809_pkey",
+            "plannedRows": 8300,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.2",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260808",
+            "alias": "logs_6",
+            "indexName": "logs_20260808_pkey",
+            "plannedRows": 8313,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.3",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260807",
+            "alias": "logs_5",
+            "indexName": "logs_20260807_pkey",
+            "plannedRows": 8324,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.4",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260806",
+            "alias": "logs_4",
+            "indexName": "logs_20260806_pkey",
+            "plannedRows": 8366,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.5",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260805",
+            "alias": "logs_3",
+            "indexName": "logs_20260805_pkey",
+            "plannedRows": 8332,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.6",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260804",
+            "alias": "logs_2",
+            "indexName": "logs_20260804_pkey",
+            "plannedRows": 8323,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.7",
+            "nodeType": "Index Scan",
+            "relationName": "logs_20260803",
+            "alias": "logs_1",
+            "indexName": "logs_20260803_pkey",
+            "plannedRows": 4336,
+            "actualRows": 0,
+            "actualLoops": 0,
+            "estimateToActualRatio": null,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 0,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": true,
+            "hasRecheckCondition": false
+          }
+        ],
+        "scanTypes": [
+          "Index Scan"
+        ],
+        "partitionsPlanned": [
+          "logs_20260803",
+          "logs_20260804",
+          "logs_20260805",
+          "logs_20260806",
+          "logs_20260807",
+          "logs_20260808",
+          "logs_20260809",
+          "logs_20260810"
+        ],
+        "partitionsExecuted": [
+          "logs_20260810"
+        ],
+        "defaultPartitionPlanned": false,
+        "defaultPartitionExecuted": false,
+        "incrementalSortOccurred": false,
+        "subplansRemoved": 0,
+        "spillDetected": false
+      }
+    },
+    {
+      "id": "attribute-filtered-list",
+      "kind": "list",
+      "description": "Normalized JSONB attribute containment over seven days.",
+      "request": {
+        "attr.tenant_id": "tenant-000123",
+        "since": "2026-08-03T11:25:21.418Z",
+        "until": "2026-08-10T11:25:21.418Z",
+        "limit": "100"
+      },
+      "sql": "\nSELECT\n  logs.id::text AS id,\n  to_char(\n    logs.\"timestamp\" AT TIME ZONE 'UTC',\n    'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'\n  ) AS timestamp,\n  logs.level,\n  logs.service,\n  logs.message,\n  logs.attributes\nFROM logstream.logs AS logs\nWHERE \"timestamp\" >= $1::timestamptz AND \"timestamp\" < $2::timestamptz AND attributes_search @> $3::jsonb\nORDER BY logs.\"timestamp\" DESC, logs.id DESC\nLIMIT $4::integer\n",
+      "parameters": [
+        "2026-08-03T11:25:21.418Z",
+        "2026-08-10T11:25:21.418Z",
+        "{\"tenant_id\":\"tenant-000123\"}",
+        101
+      ],
+      "matchingRows": 234,
+      "resultRows": 101,
+      "resultChecksum": "d3ca952d",
+      "rawPlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 12186.6,
+          "Total Cost": 12188.46,
+          "Plan Rows": 16,
+          "Plan Width": 216,
+          "Actual Startup Time": 23.69,
+          "Actual Total Time": 26.304,
+          "Actual Rows": 101,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 8710,
+          "Shared Read Blocks": 1,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Gather Merge",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 12186.6,
+              "Total Cost": 12188.46,
+              "Plan Rows": 16,
+              "Plan Width": 216,
+              "Actual Startup Time": 23.689,
+              "Actual Total Time": 26.289,
+              "Actual Rows": 101,
+              "Actual Loops": 1,
+              "Workers Planned": 2,
+              "Workers Launched": 2,
+              "Shared Hit Blocks": 8710,
+              "Shared Read Blocks": 1,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 11186.57,
+                  "Total Cost": 11186.59,
+                  "Plan Rows": 8,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 14.412,
+                  "Actual Total Time": 14.416,
+                  "Actual Rows": 57,
+                  "Actual Loops": 3,
+                  "Sort Key": [
+                    "logs.\"timestamp\" DESC",
+                    "logs.id DESC"
+                  ],
+                  "Sort Method": "quicksort",
+                  "Sort Space Used": 59,
+                  "Sort Space Type": "Memory",
+                  "Shared Hit Blocks": 8710,
+                  "Shared Read Blocks": 1,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0,
+                  "Workers": [
+                    {
+                      "Worker Number": 0,
+                      "Sort Method": "quicksort",
+                      "Sort Space Used": 38,
+                      "Sort Space Type": "Memory"
+                    },
+                    {
+                      "Worker Number": 1,
+                      "Sort Method": "quicksort",
+                      "Sort Space Used": 38,
+                      "Sort Space Type": "Memory"
+                    }
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Append",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Startup Cost": 0,
+                      "Total Cost": 11186.45,
+                      "Plan Rows": 8,
+                      "Plan Width": 216,
+                      "Actual Startup Time": 0.12,
+                      "Actual Total Time": 14.084,
+                      "Actual Rows": 78,
+                      "Actual Loops": 3,
+                      "Shared Hit Blocks": 8621,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "Workers": [],
+                      "Subplans Removed": 0,
+                      "Plans": [
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260806",
+                          "Alias": "logs_4",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.16,
+                          "Plan Rows": 2,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.144,
+                          "Actual Total Time": 5.943,
+                          "Actual Rows": 33,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (attributes_search @> '{\"tenant_id\": \"tenant-000123\"}'::jsonb))",
+                          "Rows Removed by Filter": 33301,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260809",
+                          "Alias": "logs_7",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.16,
+                          "Plan Rows": 2,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.142,
+                          "Actual Total Time": 5.976,
+                          "Actual Rows": 33,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (attributes_search @> '{\"tenant_id\": \"tenant-000123\"}'::jsonb))",
+                          "Rows Removed by Filter": 33301,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260803",
+                          "Alias": "logs_1",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.15,
+                          "Plan Rows": 1,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.31,
+                          "Actual Total Time": 1.443,
+                          "Actual Rows": 6,
+                          "Actual Loops": 3,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (attributes_search @> '{\"tenant_id\": \"tenant-000123\"}'::jsonb))",
+                          "Rows Removed by Filter": 11105,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260804",
+                          "Alias": "logs_2",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.15,
+                          "Plan Rows": 2,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.162,
+                          "Actual Total Time": 2.993,
+                          "Actual Rows": 16,
+                          "Actual Loops": 2,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (attributes_search @> '{\"tenant_id\": \"tenant-000123\"}'::jsonb))",
+                          "Rows Removed by Filter": 16650,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260805",
+                          "Alias": "logs_3",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.15,
+                          "Plan Rows": 2,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.023,
+                          "Actual Total Time": 5.616,
+                          "Actual Rows": 34,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (attributes_search @> '{\"tenant_id\": \"tenant-000123\"}'::jsonb))",
+                          "Rows Removed by Filter": 33299,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260807",
+                          "Alias": "logs_5",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.15,
+                          "Plan Rows": 2,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.136,
+                          "Actual Total Time": 5.787,
+                          "Actual Rows": 33,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (attributes_search @> '{\"tenant_id\": \"tenant-000123\"}'::jsonb))",
+                          "Rows Removed by Filter": 33300,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260808",
+                          "Alias": "logs_6",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.15,
+                          "Plan Rows": 2,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.023,
+                          "Actual Total Time": 5.75,
+                          "Actual Rows": 34,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (attributes_search @> '{\"tenant_id\": \"tenant-000123\"}'::jsonb))",
+                          "Rows Removed by Filter": 33299,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260810",
+                          "Alias": "logs_8",
+                          "Startup Cost": 0,
+                          "Total Cost": 706.32,
+                          "Plan Rows": 1,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.072,
+                          "Actual Total Time": 2.801,
+                          "Actual Rows": 16,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (attributes_search @> '{\"tenant_id\": \"tenant-000123\"}'::jsonb))",
+                          "Rows Removed by Filter": 15848,
+                          "Shared Hit Blocks": 543,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Planning Time": 1.062,
+        "Execution Time": 26.548,
+        "Planning": {
+          "Shared Hit Blocks": 45,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Settings": {}
+      },
+      "summary": {
+        "topLevelNodeType": "Limit",
+        "planningTimeMs": 1.062,
+        "executionTimeMs": 26.548,
+        "rootActualRows": 101,
+        "rootBuffers": {
+          "sharedHit": 8710,
+          "sharedRead": 1,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "planningBuffers": {
+          "sharedHit": 45,
+          "sharedRead": 0,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "nodes": [
+          {
+            "path": "0",
+            "nodeType": "Limit",
+            "plannedRows": 16,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.15841584158415842,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 8710,
+              "sharedRead": 1,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0",
+            "nodeType": "Gather Merge",
+            "plannedRows": 16,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.15841584158415842,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 8710,
+              "sharedRead": 1,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0",
+            "nodeType": "Sort",
+            "plannedRows": 8,
+            "actualRows": 57,
+            "actualLoops": 3,
+            "estimateToActualRatio": 0.14035087719298245,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 8710,
+              "sharedRead": 1,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "sortKey": [
+              "logs.\"timestamp\" DESC",
+              "logs.id DESC"
+            ],
+            "sortMethod": "quicksort",
+            "sortSpaceUsedKb": 59,
+            "sortSpaceType": "Memory",
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0",
+            "nodeType": "Append",
+            "plannedRows": 8,
+            "actualRows": 78,
+            "actualLoops": 3,
+            "estimateToActualRatio": 0.10256410256410256,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 8621,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.0",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260806",
+            "alias": "logs_4",
+            "plannedRows": 2,
+            "actualRows": 33,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.06060606060606061,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.1",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260809",
+            "alias": "logs_7",
+            "plannedRows": 2,
+            "actualRows": 33,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.06060606060606061,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.2",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260803",
+            "alias": "logs_1",
+            "plannedRows": 1,
+            "actualRows": 6,
+            "actualLoops": 3,
+            "estimateToActualRatio": 0.16666666666666666,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.3",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260804",
+            "alias": "logs_2",
+            "plannedRows": 2,
+            "actualRows": 16,
+            "actualLoops": 2,
+            "estimateToActualRatio": 0.125,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.4",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260805",
+            "alias": "logs_3",
+            "plannedRows": 2,
+            "actualRows": 34,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.058823529411764705,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.5",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260807",
+            "alias": "logs_5",
+            "plannedRows": 2,
+            "actualRows": 33,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.06060606060606061,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.6",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260808",
+            "alias": "logs_6",
+            "plannedRows": 2,
+            "actualRows": 34,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.058823529411764705,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.7",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260810",
+            "alias": "logs_8",
+            "plannedRows": 1,
+            "actualRows": 16,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.0625,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 543,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          }
+        ],
+        "scanTypes": [
+          "Seq Scan"
+        ],
+        "partitionsPlanned": [
+          "logs_20260803",
+          "logs_20260804",
+          "logs_20260805",
+          "logs_20260806",
+          "logs_20260807",
+          "logs_20260808",
+          "logs_20260809",
+          "logs_20260810"
+        ],
+        "partitionsExecuted": [
+          "logs_20260803",
+          "logs_20260804",
+          "logs_20260805",
+          "logs_20260806",
+          "logs_20260807",
+          "logs_20260808",
+          "logs_20260809",
+          "logs_20260810"
+        ],
+        "defaultPartitionPlanned": false,
+        "defaultPartitionExecuted": false,
+        "incrementalSortOccurred": false,
+        "subplansRemoved": 0,
+        "spillDetected": false
+      }
+    },
+    {
+      "id": "literal-message-search-list",
+      "kind": "list",
+      "description": "Literal mixed-case message search containing SQL wildcard characters.",
+      "request": {
+        "q": "nEeDlE_%\\pAtH",
+        "since": "2026-08-03T11:25:21.418Z",
+        "until": "2026-08-10T11:25:21.418Z",
+        "limit": "100"
+      },
+      "sql": "\nSELECT\n  logs.id::text AS id,\n  to_char(\n    logs.\"timestamp\" AT TIME ZONE 'UTC',\n    'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'\n  ) AS timestamp,\n  logs.level,\n  logs.service,\n  logs.message,\n  logs.attributes\nFROM logstream.logs AS logs\nWHERE \"timestamp\" >= $1::timestamptz AND \"timestamp\" < $2::timestamptz AND message ILIKE $3::text ESCAPE E'\\\\'\nORDER BY logs.\"timestamp\" DESC, logs.id DESC\nLIMIT $4::integer\n",
+      "parameters": [
+        "2026-08-03T11:25:21.418Z",
+        "2026-08-10T11:25:21.418Z",
+        "%nEeDlE\\_\\%\\\\pAtH%",
+        101
+      ],
+      "matchingRows": 234,
+      "resultRows": 101,
+      "resultChecksum": "d054b3d6",
+      "rawPlan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 12191.99,
+          "Total Cost": 12203.78,
+          "Plan Rows": 101,
+          "Plan Width": 216,
+          "Actual Startup Time": 104.985,
+          "Actual Total Time": 107.455,
+          "Actual Rows": 101,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 8711,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Gather Merge",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 12191.99,
+              "Total Cost": 12217.2,
+              "Plan Rows": 216,
+              "Plan Width": 216,
+              "Actual Startup Time": 104.984,
+              "Actual Total Time": 107.449,
+              "Actual Rows": 101,
+              "Actual Loops": 1,
+              "Workers Planned": 2,
+              "Workers Launched": 2,
+              "Shared Hit Blocks": 8711,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 11191.97,
+                  "Total Cost": 11192.24,
+                  "Plan Rows": 108,
+                  "Plan Width": 216,
+                  "Actual Startup Time": 96.728,
+                  "Actual Total Time": 96.732,
+                  "Actual Rows": 67,
+                  "Actual Loops": 3,
+                  "Sort Key": [
+                    "logs.\"timestamp\" DESC",
+                    "logs.id DESC"
+                  ],
+                  "Sort Method": "quicksort",
+                  "Sort Space Used": 51,
+                  "Sort Space Type": "Memory",
+                  "Shared Hit Blocks": 8711,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0,
+                  "Workers": [
+                    {
+                      "Worker Number": 0,
+                      "Sort Method": "quicksort",
+                      "Sort Space Used": 40,
+                      "Sort Space Type": "Memory"
+                    },
+                    {
+                      "Worker Number": 1,
+                      "Sort Method": "quicksort",
+                      "Sort Space Used": 44,
+                      "Sort Space Type": "Memory"
+                    }
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Append",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Startup Cost": 0,
+                      "Total Cost": 11188.32,
+                      "Plan Rows": 108,
+                      "Plan Width": 216,
+                      "Actual Startup Time": 0.182,
+                      "Actual Total Time": 96.617,
+                      "Actual Rows": 78,
+                      "Actual Loops": 3,
+                      "Shared Hit Blocks": 8621,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "Workers": [],
+                      "Subplans Removed": 0,
+                      "Plans": [
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260806",
+                          "Alias": "logs_4",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.36,
+                          "Plan Rows": 22,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.224,
+                          "Actual Total Time": 78.779,
+                          "Actual Rows": 34,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (message ~~* '%nEeDlE\\_\\%\\\\pAtH%'::text))",
+                          "Rows Removed by Filter": 33300,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260809",
+                          "Alias": "logs_7",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.36,
+                          "Plan Rows": 22,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.23,
+                          "Actual Total Time": 82.514,
+                          "Actual Rows": 34,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (message ~~* '%nEeDlE\\_\\%\\\\pAtH%'::text))",
+                          "Rows Removed by Filter": 33300,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260804",
+                          "Alias": "logs_2",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.35,
+                          "Plan Rows": 22,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.257,
+                          "Actual Total Time": 11.994,
+                          "Actual Rows": 33,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (message ~~* '%nEeDlE\\_\\%\\\\pAtH%'::text))",
+                          "Rows Removed by Filter": 33300,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260805",
+                          "Alias": "logs_3",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.35,
+                          "Plan Rows": 22,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.179,
+                          "Actual Total Time": 4.168,
+                          "Actual Rows": 11,
+                          "Actual Loops": 3,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (message ~~* '%nEeDlE\\_\\%\\\\pAtH%'::text))",
+                          "Rows Removed by Filter": 11100,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260807",
+                          "Alias": "logs_5",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.33,
+                          "Plan Rows": 20,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.167,
+                          "Actual Total Time": 5.887,
+                          "Actual Rows": 16,
+                          "Actual Loops": 2,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (message ~~* '%nEeDlE\\_\\%\\\\pAtH%'::text))",
+                          "Rows Removed by Filter": 16650,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260808",
+                          "Alias": "logs_6",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.33,
+                          "Plan Rows": 20,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.39,
+                          "Actual Total Time": 78.111,
+                          "Actual Rows": 33,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (message ~~* '%nEeDlE\\_\\%\\\\pAtH%'::text))",
+                          "Rows Removed by Filter": 33300,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260803",
+                          "Alias": "logs_1",
+                          "Startup Cost": 0,
+                          "Total Cost": 1497.26,
+                          "Plan Rows": 12,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.132,
+                          "Actual Total Time": 7.886,
+                          "Actual Rows": 18,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (message ~~* '%nEeDlE\\_\\%\\\\pAtH%'::text))",
+                          "Rows Removed by Filter": 33316,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260810",
+                          "Alias": "logs_8",
+                          "Startup Cost": 0,
+                          "Total Cost": 706.42,
+                          "Plan Rows": 11,
+                          "Plan Width": 216,
+                          "Actual Startup Time": 0.091,
+                          "Actual Total Time": 6.246,
+                          "Actual Rows": 16,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-03 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone) AND (message ~~* '%nEeDlE\\_\\%\\\\pAtH%'::text))",
+                          "Rows Removed by Filter": 15848,
+                          "Shared Hit Blocks": 543,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Workers": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Planning Time": 0.774,
+        "Execution Time": 107.494,
+        "Planning": {
+          "Shared Hit Blocks": 45,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Settings": {}
+      },
+      "summary": {
+        "topLevelNodeType": "Limit",
+        "planningTimeMs": 0.774,
+        "executionTimeMs": 107.494,
+        "rootActualRows": 101,
+        "rootBuffers": {
+          "sharedHit": 8711,
+          "sharedRead": 0,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "planningBuffers": {
+          "sharedHit": 45,
+          "sharedRead": 0,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "nodes": [
+          {
+            "path": "0",
+            "nodeType": "Limit",
+            "plannedRows": 101,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 1,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 8711,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0",
+            "nodeType": "Gather Merge",
+            "plannedRows": 216,
+            "actualRows": 101,
+            "actualLoops": 1,
+            "estimateToActualRatio": 2.1386138613861387,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 8711,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0",
+            "nodeType": "Sort",
+            "plannedRows": 108,
+            "actualRows": 67,
+            "actualLoops": 3,
+            "estimateToActualRatio": 1.6119402985074627,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 8711,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "sortKey": [
+              "logs.\"timestamp\" DESC",
+              "logs.id DESC"
+            ],
+            "sortMethod": "quicksort",
+            "sortSpaceUsedKb": 51,
+            "sortSpaceType": "Memory",
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0",
+            "nodeType": "Append",
+            "plannedRows": 108,
+            "actualRows": 78,
+            "actualLoops": 3,
+            "estimateToActualRatio": 1.3846153846153846,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 8621,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.0",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260806",
+            "alias": "logs_4",
+            "plannedRows": 22,
+            "actualRows": 34,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.6470588235294118,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.1",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260809",
+            "alias": "logs_7",
+            "plannedRows": 22,
+            "actualRows": 34,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.6470588235294118,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.2",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260804",
+            "alias": "logs_2",
+            "plannedRows": 22,
+            "actualRows": 33,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.6666666666666666,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.3",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260805",
+            "alias": "logs_3",
+            "plannedRows": 22,
+            "actualRows": 11,
+            "actualLoops": 3,
+            "estimateToActualRatio": 2,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.4",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260807",
+            "alias": "logs_5",
+            "plannedRows": 20,
+            "actualRows": 16,
+            "actualLoops": 2,
+            "estimateToActualRatio": 1.25,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.5",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260808",
+            "alias": "logs_6",
+            "plannedRows": 20,
+            "actualRows": 33,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.6060606060606061,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.6",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260803",
+            "alias": "logs_1",
+            "plannedRows": 12,
+            "actualRows": 18,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.6666666666666666,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.7",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260810",
+            "alias": "logs_8",
+            "plannedRows": 11,
+            "actualRows": 16,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.6875,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 543,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          }
+        ],
+        "scanTypes": [
+          "Seq Scan"
+        ],
+        "partitionsPlanned": [
+          "logs_20260803",
+          "logs_20260804",
+          "logs_20260805",
+          "logs_20260806",
+          "logs_20260807",
+          "logs_20260808",
+          "logs_20260809",
+          "logs_20260810"
+        ],
+        "partitionsExecuted": [
+          "logs_20260803",
+          "logs_20260804",
+          "logs_20260805",
+          "logs_20260806",
+          "logs_20260807",
+          "logs_20260808",
+          "logs_20260809",
+          "logs_20260810"
+        ],
+        "defaultPartitionPlanned": false,
+        "defaultPartitionExecuted": false,
+        "incrementalSortOccurred": false,
+        "subplansRemoved": 0,
+        "spillDetected": false
+      }
+    },
+    {
+      "id": "primary-aggregation",
+      "kind": "aggregation",
+      "description": "Representative 24-hour, five-minute aggregation grouped by service.",
+      "request": {
+        "since": "2026-08-09T11:25:21.418Z",
+        "until": "2026-08-10T11:25:21.418Z",
+        "bucket": "5m",
+        "group_by": "service"
+      },
+      "sql": "\nSELECT\n  to_char(\n    aggregation.bucket_start AT TIME ZONE 'UTC',\n    'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'\n  ) AS start,\n  aggregation.group_value AS \"group\",\n  aggregation.count::text AS count\nFROM (\n  SELECT\n    date_bin(\n      INTERVAL '5 minutes',\n      logs.\"timestamp\",\n      TIMESTAMPTZ '1970-01-01 00:00:00+00'\n    ) AS bucket_start,\n    logs.service AS group_value,\n    COUNT(*) AS count\n  FROM logstream.logs AS logs\n  WHERE \"timestamp\" >= $1::timestamptz AND \"timestamp\" < $2::timestamptz\n  GROUP BY 1, 2\n) AS aggregation\nORDER BY aggregation.bucket_start ASC, aggregation.group_value ASC\n",
+      "parameters": [
+        "2026-08-09T11:25:21.418Z",
+        "2026-08-10T11:25:21.418Z"
+      ],
+      "matchingRows": 33333,
+      "resultRows": 28808,
+      "resultCountSum": 33333,
+      "resultChecksum": "3b985562",
+      "rawPlan": {
+        "Plan": {
+          "Node Type": "Subquery Scan",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Alias": "aggregation",
+          "Startup Cost": 5186.45,
+          "Total Cost": 6268.83,
+          "Plan Rows": 33304,
+          "Plan Width": 84,
+          "Actual Startup Time": 90.482,
+          "Actual Total Time": 106.747,
+          "Actual Rows": 28808,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 1697,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Aggregate",
+              "Strategy": "Sorted",
+              "Partial Mode": "Simple",
+              "Parent Relationship": "Subquery",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 5186.45,
+              "Total Cost": 5935.79,
+              "Plan Rows": 33304,
+              "Plan Width": 28,
+              "Actual Startup Time": 90.473,
+              "Actual Total Time": 97.147,
+              "Actual Rows": 28808,
+              "Actual Loops": 1,
+              "Group Key": [
+                "(date_bin('00:05:00'::interval, logs.\"timestamp\", '1970-01-01 00:00:00+00'::timestamp with time zone))",
+                "logs.service"
+              ],
+              "Shared Hit Blocks": 1697,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 5186.45,
+                  "Total Cost": 5269.71,
+                  "Plan Rows": 33304,
+                  "Plan Width": 20,
+                  "Actual Startup Time": 90.467,
+                  "Actual Total Time": 91.424,
+                  "Actual Rows": 33333,
+                  "Actual Loops": 1,
+                  "Sort Key": [
+                    "(date_bin('00:05:00'::interval, logs.\"timestamp\", '1970-01-01 00:00:00+00'::timestamp with time zone))",
+                    "logs.service"
+                  ],
+                  "Sort Method": "quicksort",
+                  "Sort Space Used": 2928,
+                  "Sort Space Type": "Memory",
+                  "Shared Hit Blocks": 1697,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0,
+                  "Plans": [
+                    {
+                      "Node Type": "Append",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Startup Cost": 0,
+                      "Total Cost": 2684.75,
+                      "Plan Rows": 33304,
+                      "Plan Width": 20,
+                      "Actual Startup Time": 0.006,
+                      "Actual Total Time": 5.576,
+                      "Actual Rows": 33333,
+                      "Actual Loops": 1,
+                      "Shared Hit Blocks": 1697,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "Subplans Removed": 0,
+                      "Plans": [
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260809",
+                          "Alias": "logs_1",
+                          "Startup Cost": 0,
+                          "Total Cost": 1697.61,
+                          "Plan Rows": 17440,
+                          "Plan Width": 20,
+                          "Actual Startup Time": 0.006,
+                          "Actual Total Time": 2.489,
+                          "Actual Rows": 17469,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-09 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                          "Rows Removed by Filter": 15865,
+                          "Shared Hit Blocks": 1154,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0
+                        },
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Member",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Relation Name": "logs_20260810",
+                          "Alias": "logs_2",
+                          "Startup Cost": 0,
+                          "Total Cost": 820.62,
+                          "Plan Rows": 15864,
+                          "Plan Width": 20,
+                          "Actual Startup Time": 0.005,
+                          "Actual Total Time": 1.53,
+                          "Actual Rows": 15864,
+                          "Actual Loops": 1,
+                          "Filter": "((\"timestamp\" >= '2026-08-09 11:25:21.418+00'::timestamp with time zone) AND (\"timestamp\" < '2026-08-10 11:25:21.418+00'::timestamp with time zone))",
+                          "Rows Removed by Filter": 0,
+                          "Shared Hit Blocks": 543,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Planning Time": 0.432,
+        "Execution Time": 107.621,
+        "Planning": {
+          "Shared Hit Blocks": 14,
+          "Shared Read Blocks": 1,
+          "Shared Dirtied Blocks": 1,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Settings": {}
+      },
+      "summary": {
+        "topLevelNodeType": "Subquery Scan",
+        "planningTimeMs": 0.432,
+        "executionTimeMs": 107.621,
+        "rootActualRows": 28808,
+        "rootBuffers": {
+          "sharedHit": 1697,
+          "sharedRead": 0,
+          "sharedDirtied": 0,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "planningBuffers": {
+          "sharedHit": 14,
+          "sharedRead": 1,
+          "sharedDirtied": 1,
+          "sharedWritten": 0,
+          "localHit": 0,
+          "localRead": 0,
+          "localDirtied": 0,
+          "localWritten": 0,
+          "tempRead": 0,
+          "tempWritten": 0
+        },
+        "nodes": [
+          {
+            "path": "0",
+            "nodeType": "Subquery Scan",
+            "alias": "aggregation",
+            "plannedRows": 33304,
+            "actualRows": 28808,
+            "actualLoops": 1,
+            "estimateToActualRatio": 1.1560677589558457,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1697,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0",
+            "nodeType": "Aggregate",
+            "plannedRows": 33304,
+            "actualRows": 28808,
+            "actualLoops": 1,
+            "estimateToActualRatio": 1.1560677589558457,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1697,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "groupKey": [
+              "(date_bin('00:05:00'::interval, logs.\"timestamp\", '1970-01-01 00:00:00+00'::timestamp with time zone))",
+              "logs.service"
+            ],
+            "strategy": "Sorted",
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0",
+            "nodeType": "Sort",
+            "plannedRows": 33304,
+            "actualRows": 33333,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.999129991299913,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1697,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "sortKey": [
+              "(date_bin('00:05:00'::interval, logs.\"timestamp\", '1970-01-01 00:00:00+00'::timestamp with time zone))",
+              "logs.service"
+            ],
+            "sortMethod": "quicksort",
+            "sortSpaceUsedKb": 2928,
+            "sortSpaceType": "Memory",
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0",
+            "nodeType": "Append",
+            "plannedRows": 33304,
+            "actualRows": 33333,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.999129991299913,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1697,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": false,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.0",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260809",
+            "alias": "logs_1",
+            "plannedRows": 17440,
+            "actualRows": 17469,
+            "actualLoops": 1,
+            "estimateToActualRatio": 0.9983399164233786,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 1154,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          },
+          {
+            "path": "0.0.0.0.1",
+            "nodeType": "Seq Scan",
+            "relationName": "logs_20260810",
+            "alias": "logs_2",
+            "plannedRows": 15864,
+            "actualRows": 15864,
+            "actualLoops": 1,
+            "estimateToActualRatio": 1,
+            "subplansRemoved": 0,
+            "buffers": {
+              "sharedHit": 543,
+              "sharedRead": 0,
+              "sharedDirtied": 0,
+              "sharedWritten": 0,
+              "localHit": 0,
+              "localRead": 0,
+              "localDirtied": 0,
+              "localWritten": 0,
+              "tempRead": 0,
+              "tempWritten": 0
+            },
+            "hasFilter": true,
+            "hasIndexCondition": false,
+            "hasRecheckCondition": false
+          }
+        ],
+        "scanTypes": [
+          "Seq Scan",
+          "Subquery Scan"
+        ],
+        "partitionsPlanned": [
+          "logs_20260809",
+          "logs_20260810"
+        ],
+        "partitionsExecuted": [
+          "logs_20260809",
+          "logs_20260810"
+        ],
+        "defaultPartitionPlanned": false,
+        "defaultPartitionExecuted": false,
+        "incrementalSortOccurred": false,
+        "subplansRemoved": 0,
+        "spillDetected": false
+      }
+    }
+  ],
+  "verifiedObservations": [
+    "The disposable dataset and fixed query results reconciled with PostgreSQL counts.",
+    "All production query values remained bound parameters.",
+    "The runtime role executed every production SELECT and EXPLAIN.",
+    "Only the accepted primary and service/time parent indexes were present.",
+    "No planner or tuning setting was changed; established bootstrap set the owner and runtime role TimeZone default to UTC."
+  ],
+  "limitations": [
+    "This is one controlled query-plan review, not a latency percentile benchmark.",
+    "The dataset was inserted directly by the owner and bypassed HTTP and ingestion validation.",
+    "Dataset reconciliation and fixed query order influence cache state; execution timings are descriptive only.",
+    "No ingestion traffic or other concurrent workload was present.",
+    "The representative primary aggregation scenario is a project review workload, not company-prescribed wording or a settled final load-test definition.",
+    "The host TypeScript process did not run within the application 0.5 CPU and 256 MiB limits.",
+    "No candidate level, JSONB, or trigram index was added or tested."
+  ],
+  "unverifiedRequirements": [
+    "PERF-002 aggregation latency below one second at p95 during the required concurrent workload",
+    "PERF-003 acceptable query performance while ingestion is active",
+    "PERF-004 complete service capacity for the representative million-row month",
+    "PERF-006 sustaining one aggregation request per second during ingestion",
+    "PERF-007 final concurrent-load performance reporting",
+    "INF-003 application and PostgreSQL resource-limit compliance for the complete service"
+  ]
+}
