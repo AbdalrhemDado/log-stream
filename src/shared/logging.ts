@@ -5,8 +5,10 @@ import type { AppConfig } from "../config/app-config.js";
 const REDACTED_PATHS = [
   "req.headers.authorization",
   "req.headers.cookie",
+  "req.url",
   "request.headers.authorization",
   "request.headers.cookie",
+  "request.url",
   "databaseUrl",
   "*.databaseUrl",
   "connectionString",
