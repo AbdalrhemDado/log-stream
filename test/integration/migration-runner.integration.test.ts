@@ -107,7 +107,7 @@ describe.skipIf(!hasPostgresEnvironment)("migration runner with PostgreSQL", () 
     const expected = await loadMigrations(migrationsDirectory);
     const ownerUrl = databaseUrl(ownerBaseUrl ?? "", databaseName);
 
-    expect(result).toEqual({ appliedVersions: [1, 2] });
+    expect(result).toEqual({ appliedVersions: [1, 2, 3] });
     await withClient(ownerUrl, async (owner) => {
       const history = await owner.query<{
         version: number;
@@ -117,7 +117,7 @@ describe.skipIf(!hasPostgresEnvironment)("migration runner with PostgreSQL", () 
       }>(
         "SELECT version, filename, checksum, applied_at FROM logstream_migrations.schema_migrations",
       );
-      expect(history.rows).toHaveLength(2);
+      expect(history.rows).toHaveLength(3);
       expect(
         history.rows.map(({ version, filename, checksum }) => ({ version, filename, checksum })),
       ).toEqual(
@@ -175,6 +175,89 @@ ORDER BY rolname
         { rolname: "logstream_owner", rolsuper: false },
         { rolname: "logstream_runtime", rolsuper: false },
       ]);
+    });
+  });
+
+  it("installs only the three hardened retention routine signatures", async () => {
+    await applyProductionMigrations();
+    await withClient(databaseUrl(adminBaseUrl ?? "", databaseName), async (admin) => {
+      const routines = await admin.query<{
+        signature: string;
+        owner: string;
+        security_definer: boolean;
+        configuration: string[] | null;
+        runtime_execute: boolean;
+        public_execute_count: number;
+      }>(`
+SELECT
+  routine.oid::regprocedure::text AS signature,
+  owner.rolname AS owner,
+  routine.prosecdef AS security_definer,
+  routine.proconfig AS configuration,
+  has_function_privilege('logstream_runtime', routine.oid, 'EXECUTE') AS runtime_execute,
+  (
+    SELECT COUNT(*)::integer
+    FROM aclexplode(COALESCE(routine.proacl, acldefault('f', routine.proowner))) AS privilege
+    WHERE privilege.grantee = 0 AND privilege.privilege_type = 'EXECUTE'
+  ) AS public_execute_count
+FROM pg_proc AS routine
+JOIN pg_namespace AS namespace ON namespace.oid = routine.pronamespace
+JOIN pg_roles AS owner ON owner.oid = routine.proowner
+WHERE namespace.nspname = 'logstream'
+ORDER BY signature
+`);
+
+      expect(routines.rows).toEqual([
+        {
+          signature: "logstream.delete_expired_default_logs(timestamp with time zone,integer)",
+          owner: "logstream_owner",
+          security_definer: true,
+          configuration: ["search_path=pg_catalog, pg_temp"],
+          runtime_execute: true,
+          public_execute_count: 0,
+        },
+        {
+          signature: "logstream.drop_one_expired_log_partition(timestamp with time zone)",
+          owner: "logstream_owner",
+          security_definer: true,
+          configuration: ["search_path=pg_catalog, pg_temp"],
+          runtime_execute: true,
+          public_execute_count: 0,
+        },
+        {
+          signature: "logstream.ensure_log_partition(timestamp with time zone)",
+          owner: "logstream_owner",
+          security_definer: true,
+          configuration: ["search_path=pg_catalog, pg_temp"],
+          runtime_execute: true,
+          public_execute_count: 0,
+        },
+      ]);
+    });
+  });
+
+  it("adds no unrelated table, extension, or parent index family in migration 0003", async () => {
+    await applyProductionMigrations();
+    await withClient(databaseUrl(adminBaseUrl ?? "", databaseName), async (admin) => {
+      const relations = await admin.query<{ name: string; kind: string }>(`
+SELECT class.relname AS name, class.relkind AS kind
+FROM pg_class AS class
+JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+WHERE namespace.nspname = 'logstream'
+ORDER BY class.relname
+`);
+      expect(relations.rows.map((row) => row.name)).toEqual([
+        "logs",
+        "logs_default",
+        "logs_default_pkey",
+        "logs_default_service_timestamp_id_idx",
+        "logs_pkey",
+        "logs_service_timestamp_id_idx",
+      ]);
+      const extensions = await admin.query<{ name: string }>(
+        "SELECT extname AS name FROM pg_extension ORDER BY extname",
+      );
+      expect(extensions.rows).toEqual([{ name: "plpgsql" }]);
     });
   });
 
@@ -302,7 +385,7 @@ SELECT
 
       await blocker.query("SELECT pg_advisory_unlock($1, $2)", [1_815_642_963, 1]);
       lockReleased = true;
-      await expect(operation).resolves.toEqual({ appliedVersions: [1, 2] });
+      await expect(operation).resolves.toEqual({ appliedVersions: [1, 2, 3] });
     } finally {
       if (!lockReleased) {
         await blocker.query("SELECT pg_advisory_unlock($1, $2)", [1_815_642_963, 1]);
@@ -322,12 +405,12 @@ SELECT
       runMigrationsWithOwner({ connection: second, loadMigrations: load }),
     ]);
 
-    expect(results.map((result) => result.appliedVersions).toSorted()).toEqual([[], [1, 2]]);
+    expect(results.map((result) => result.appliedVersions).toSorted()).toEqual([[], [1, 2, 3]]);
     await withClient(ownerUrl, async (owner) => {
       const history = await owner.query<{ count: number }>(
         "SELECT COUNT(*)::integer AS count FROM logstream_migrations.schema_migrations",
       );
-      expect(history.rows).toEqual([{ count: 2 }]);
+      expect(history.rows).toEqual([{ count: 3 }]);
     });
   });
 });

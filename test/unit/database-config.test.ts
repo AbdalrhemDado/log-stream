@@ -14,6 +14,7 @@ describe("loadDatabaseConfig", () => {
       startupTimeoutMs: 30_000,
       retryDelayMs: 500,
       retentionDays: 30,
+      retentionIntervalMs: 3_600_000,
     });
   });
 
@@ -27,6 +28,7 @@ describe("loadDatabaseConfig", () => {
         DB_STARTUP_TIMEOUT_MS: "45000",
         DB_RETRY_DELAY_MS: "250",
         RETENTION_DAYS: "90",
+        RETENTION_INTERVAL_MINUTES: "15",
       }),
     ).toEqual({
       connectionString: "postgresql://runtime:password@database:5432/logs",
@@ -36,6 +38,7 @@ describe("loadDatabaseConfig", () => {
       startupTimeoutMs: 45_000,
       retryDelayMs: 250,
       retentionDays: 90,
+      retentionIntervalMs: 900_000,
     });
   });
 
@@ -47,8 +50,25 @@ describe("loadDatabaseConfig", () => {
     ["DB_RETRY_DELAY_MS", "-1"],
     ["RETENTION_DAYS", "0"],
     ["RETENTION_DAYS", "3651"],
+    ["RETENTION_INTERVAL_MINUTES", "0"],
+    ["RETENTION_INTERVAL_MINUTES", "1441"],
+    ["RETENTION_INTERVAL_MINUTES", "+1"],
+    ["RETENTION_INTERVAL_MINUTES", "1.5"],
+    ["RETENTION_INTERVAL_MINUTES", " 1"],
+    ["RETENTION_INTERVAL_MINUTES", "1 "],
+    ["RETENTION_INTERVAL_MINUTES", "1minute"],
+    ["RETENTION_INTERVAL_MINUTES", "9007199254740992"],
   ])("rejects malformed %s configuration", (name, value) => {
     expect(() => loadDatabaseConfig({ [name]: value })).toThrow(`${name} must be`);
+  });
+
+  it.each([
+    ["minimum", "1", 60_000],
+    ["maximum", "1440", 86_400_000],
+  ])("converts the %s retention interval to safe milliseconds", (_name, value, expected) => {
+    expect(loadDatabaseConfig({ RETENTION_INTERVAL_MINUTES: value }).retentionIntervalMs).toBe(
+      expected,
+    );
   });
 
   it("rejects retry delays beyond the startup deadline", () => {

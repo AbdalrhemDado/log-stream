@@ -28,6 +28,11 @@ import { createIngestionRepository } from "./modules/ingestion/ingestion-reposit
 import { createIngestionService } from "./modules/ingestion/ingestion-service.js";
 import { createLogQueryRepository } from "./modules/query/log-query-repository.js";
 import { createLogQueryService } from "./modules/query/log-query-service.js";
+import { createRetentionRepository } from "./modules/retention/retention-repository.js";
+import {
+  createRetentionService,
+  stopRetentionBeforeDatabase,
+} from "./modules/retention/retention-service.js";
 import { buildLoggerOptions } from "./shared/logging.js";
 import { createReadiness } from "./shared/readiness.js";
 
@@ -41,6 +46,7 @@ async function startRuntime(
   const readiness = createReadiness();
   const databasePool = createDatabasePool(databaseConfig);
   let app: ReturnType<typeof buildApp> | undefined;
+  let retentionService: ReturnType<typeof createRetentionService> | undefined;
   databasePool.on("error", () => {
     readiness.markUnavailable();
     if (app === undefined) {
@@ -75,6 +81,27 @@ async function startRuntime(
       logAggregationService,
       logQueryService,
     });
+    const retentionRepository = createRetentionRepository(databasePool);
+    retentionService = createRetentionService({
+      repository: retentionRepository,
+      retentionDays: databaseConfig.retentionDays,
+      retentionIntervalMs: databaseConfig.retentionIntervalMs,
+      clock: { now: () => Date.now() },
+      timer: {
+        schedule: (callback, delayMs) => setTimeout(callback, delayMs),
+        cancel: (handle) => {
+          clearTimeout(handle as ReturnType<typeof setTimeout>);
+        },
+      },
+      logger: {
+        info: (fields, message) => {
+          app?.log.info(fields, message);
+        },
+        error: (fields, message) => {
+          app?.log.error(fields, message);
+        },
+      },
+    });
     app.log.info({ attempts: databaseWait.attempts }, "Runtime database verified");
   } catch (error: unknown) {
     readiness.beginShutdown();
@@ -96,7 +123,9 @@ async function startRuntime(
       readiness.beginShutdown();
     },
     closeApplication: async () => app.close(),
-    closeDatabase: async () => databasePool.end(),
+    closeDatabase: async () => {
+      await stopRetentionBeforeDatabase(retentionService, async () => databasePool.end());
+    },
     shutdownTimeoutMs: SHUTDOWN_TIMEOUT_MS,
     forceExit: (exitCode) => {
       process.exit(exitCode);
@@ -121,6 +150,7 @@ async function startRuntime(
       host: config.host,
       port: config.port,
     });
+    retentionService.start();
     readiness.markReady();
   } catch (error: unknown) {
     lifecycle.dispose();

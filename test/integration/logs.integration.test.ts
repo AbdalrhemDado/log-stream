@@ -9,13 +9,18 @@ import { runMigrationsWithOwnerRetry } from "../../src/database/migrations/migra
 import type { MigrationOwnerConnection } from "../../src/database/migrations/migration-types.js";
 import { buildPartitionPlan } from "../../src/database/partitions/partition-plan.js";
 import { preparePartitions } from "../../src/database/partitions/partition-preparer.js";
-import type { LogId } from "../../src/domain/log-entry.js";
+import type { CanonicalUtcTimestamp, LogId } from "../../src/domain/log-entry.js";
 import { createLogAggregationRepository } from "../../src/modules/aggregation/log-aggregation-repository.js";
 import { createLogAggregationService } from "../../src/modules/aggregation/log-aggregation-service.js";
 import { createIngestionRepository } from "../../src/modules/ingestion/ingestion-repository.js";
 import { createIngestionService } from "../../src/modules/ingestion/ingestion-service.js";
 import { createLogQueryRepository } from "../../src/modules/query/log-query-repository.js";
 import { createLogQueryService } from "../../src/modules/query/log-query-service.js";
+import {
+  createRetentionRepository,
+  type RetentionDatabasePool,
+  type RetentionRunRequest,
+} from "../../src/modules/retention/retention-repository.js";
 
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
 const adminBaseUrl = process.env["TEST_ADMIN_DATABASE_URL"];
@@ -29,6 +34,11 @@ let databaseSequence = 0;
 let databaseName = "";
 let runtimePool: Pool | undefined;
 let app: ReturnType<typeof buildApp> | undefined;
+const coordinatorLockNamespace = 1_815_642_963;
+const coordinatorLockId = 2;
+const defaultBlockerLockId = 70_022;
+const defaultBlockerFunctionName = "retention_test_block_http_default_delete";
+const defaultBlockerTriggerName = "retention_test_block_http_default_delete_trigger";
 
 function databaseUrl(baseUrl: string, name: string): string {
   const url = new URL(baseUrl);
@@ -43,6 +53,13 @@ function trustedDatabaseIdentifier(name: string): string {
   return `"${name}"`;
 }
 
+function trustedTestObjectIdentifier(name: string): string {
+  if (!/^retention_test_[a-z_]+$/u.test(name)) {
+    throw new Error("Refusing an unexpected retention HTTP-test object identifier.");
+  }
+  return `"${name}"`;
+}
+
 async function withClient<T>(connectionString: string, operation: (client: Client) => Promise<T>) {
   const client = new Client({ connectionString });
   await client.connect();
@@ -51,6 +68,123 @@ async function withClient<T>(connectionString: string, operation: (client: Clien
   } finally {
     await client.end();
   }
+}
+
+async function databaseReference(client: Client | Pool): Promise<{
+  readonly now: CanonicalUtcTimestamp;
+  readonly utcDay: CanonicalUtcTimestamp;
+}> {
+  const result = await client.query<{ now: string; utc_day: string }>(`
+SELECT
+  to_char(statement_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS now,
+  to_char(
+    date_trunc('day', statement_timestamp() AT TIME ZONE 'UTC'),
+    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+  ) AS utc_day
+`);
+  const row = result.rows[0];
+  if (row === undefined) {
+    throw new Error("Database reference time is unavailable.");
+  }
+  return {
+    now: row.now as CanonicalUtcTimestamp,
+    utcDay: row.utc_day as CanonicalUtcTimestamp,
+  };
+}
+
+function shift(timestamp: string, milliseconds: number): CanonicalUtcTimestamp {
+  return new Date(Date.parse(timestamp) + milliseconds).toISOString() as CanonicalUtcTimestamp;
+}
+
+function retentionRequest(
+  reference: { readonly now: CanonicalUtcTimestamp },
+  cutoff: CanonicalUtcTimestamp,
+): RetentionRunRequest {
+  const partitions = buildPartitionPlan(new Date(reference.now), 1).slice(1);
+  if (partitions.length !== 3) {
+    throw new Error("Expected exactly three retention partitions.");
+  }
+  return {
+    referenceTime: reference.now,
+    cutoff,
+    partitions,
+    signal: new AbortController().signal,
+  };
+}
+
+function runtimePoolAdapter(pool: Pool): RetentionDatabasePool {
+  return {
+    connect: async () => {
+      const client = await pool.connect();
+      return {
+        query: async (sql, parameters) => client.query(sql, parameters),
+        release: (destroy) => {
+          client.release(destroy);
+        },
+      };
+    },
+  };
+}
+
+async function waitForCondition(
+  condition: () => boolean | Promise<boolean>,
+  failureMessage: string,
+): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    if (await condition()) {
+      return;
+    }
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20);
+    });
+  }
+  throw new Error(failureMessage);
+}
+
+async function waitForDefaultCleanupBlock(observer: Client): Promise<void> {
+  await waitForCondition(async () => {
+    const result = await observer.query<{ blocked: boolean }>(`
+SELECT EXISTS (
+  SELECT 1
+  FROM pg_catalog.pg_stat_activity
+  WHERE datname = pg_catalog.current_database()
+    AND usename = 'logstream_runtime'
+    AND state = 'active'
+    AND wait_event_type = 'Lock'
+    AND query LIKE '%delete_expired_default_logs%'
+) AS blocked
+`);
+    return result.rows[0]?.blocked === true;
+  }, "Default cleanup did not become observably blocked.");
+}
+
+async function installDefaultCleanupBlocker(owner: Client): Promise<void> {
+  const functionIdentifier = trustedTestObjectIdentifier(defaultBlockerFunctionName);
+  const triggerIdentifier = trustedTestObjectIdentifier(defaultBlockerTriggerName);
+  await owner.query(`
+CREATE FUNCTION logstream.${functionIdentifier}() RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, pg_temp
+AS $$
+BEGIN
+  PERFORM pg_catalog.pg_advisory_xact_lock(${String(coordinatorLockNamespace)}, ${String(defaultBlockerLockId)});
+  RETURN OLD;
+END
+$$;
+CREATE TRIGGER ${triggerIdentifier}
+BEFORE DELETE ON logstream.logs_default
+FOR EACH ROW EXECUTE FUNCTION logstream.${functionIdentifier}();
+`);
+}
+
+async function removeDefaultCleanupBlocker(owner: Client): Promise<void> {
+  const functionIdentifier = trustedTestObjectIdentifier(defaultBlockerFunctionName);
+  const triggerIdentifier = trustedTestObjectIdentifier(defaultBlockerTriggerName);
+  await owner.query(`
+DROP TRIGGER IF EXISTS ${triggerIdentifier} ON logstream.logs_default;
+DROP FUNCTION IF EXISTS logstream.${functionIdentifier}();
+`);
 }
 
 function ownerConnection(connectionString: string): MigrationOwnerConnection {
@@ -85,7 +219,10 @@ async function migrateAndPrepare(): Promise<void> {
   });
 }
 
-function buildHttpApplication(generateId: () => LogId): ReturnType<typeof buildApp> {
+function buildHttpApplication(
+  generateId: () => LogId,
+  currentTime = fixedCurrentTime,
+): ReturnType<typeof buildApp> {
   if (runtimePool === undefined) {
     throw new Error("Runtime pool was not created.");
   }
@@ -93,7 +230,7 @@ function buildHttpApplication(generateId: () => LogId): ReturnType<typeof buildA
   const repository = createIngestionRepository(runtimePool);
   const ingestionService = createIngestionService({
     repository,
-    clock: () => fixedCurrentTime.getTime(),
+    clock: () => currentTime.getTime(),
     generateId,
   });
   const logQueryRepository = createLogQueryRepository(runtimePool);
@@ -620,6 +757,306 @@ SELECT
     expect(second.logs.map((row) => row.id)).toEqual(["00000000-0000-4000-8000-000000000001"]);
     expect(second.logs.map((row) => row.message)).not.toContain("inserted ahead of cursor");
     expect(second.next_cursor).toBeNull();
+  });
+
+  it("accepts old logs through HTTP and expires only timestamps before the cutoff", async () => {
+    if (runtimePool === undefined) {
+      throw new Error("Runtime PostgreSQL pool is unavailable.");
+    }
+    const reference = await databaseReference(runtimePool);
+    const cutoff = shift(reference.now, -30 * 86_400_000);
+    const older = shift(cutoff, -1);
+    const newer = shift(cutoff, 1);
+    app = buildHttpApplication(sequentialIdGenerator(), new Date(reference.now));
+
+    const ingestion = await app.inject({
+      method: "POST",
+      url: "/logs",
+      payload: {
+        logs: [
+          {
+            timestamp: older,
+            level: "info",
+            service: "retention-boundary-http",
+            message: "strictly expired",
+          },
+          {
+            timestamp: cutoff,
+            level: "info",
+            service: "retention-boundary-http",
+            message: "equal cutoff",
+          },
+          {
+            timestamp: newer,
+            level: "info",
+            service: "retention-boundary-http",
+            message: "newer than cutoff",
+          },
+        ],
+      },
+    });
+    expect(ingestion.statusCode).toBe(200);
+    expect(ingestion.json()).toEqual({ accepted: 3, rejected: [] });
+
+    const before = await app.inject({
+      method: "GET",
+      url: "/logs?service=retention-boundary-http",
+    });
+    expect(before.statusCode).toBe(200);
+    expect(before.json<{ logs: { message: string }[] }>().logs.map((row) => row.message)).toEqual([
+      "newer than cutoff",
+      "equal cutoff",
+      "strictly expired",
+    ]);
+
+    const repository = createRetentionRepository(runtimePoolAdapter(runtimePool));
+    const retention = await repository.run(retentionRequest(reference, cutoff));
+    expect(retention.status).toBe("completed");
+    expect(retention.defaultRowsDeleted).toBe(1);
+
+    const after = await app.inject({
+      method: "GET",
+      url: "/logs?service=retention-boundary-http",
+    });
+    expect(after.statusCode).toBe(200);
+    expect(
+      after
+        .json<{ logs: { id: string; timestamp: string; message: string }[] }>()
+        .logs.map((row) => [row.id, row.timestamp, row.message]),
+    ).toEqual([
+      ["00000000-0000-4000-8000-000000000003", newer, "newer than cutoff"],
+      ["00000000-0000-4000-8000-000000000002", cutoff, "equal cutoff"],
+    ]);
+    const databaseRows = await runtimePool.query<{ id: string; timestamp: Date }>(
+      "SELECT id::text, timestamp FROM logstream.logs WHERE service = $1 ORDER BY timestamp DESC, id DESC",
+      ["retention-boundary-http"],
+    );
+    expect(databaseRows.rows.map((row) => [row.id, row.timestamp.toISOString()])).toEqual([
+      ["00000000-0000-4000-8000-000000000003", newer],
+      ["00000000-0000-4000-8000-000000000002", cutoff],
+    ]);
+  });
+
+  it("continues a cursor safely after retention removes all older continuation rows", async () => {
+    if (runtimePool === undefined) {
+      throw new Error("Runtime PostgreSQL pool is unavailable.");
+    }
+    const reference = await databaseReference(runtimePool);
+    const cutoff = shift(reference.now, -20 * 86_400_000);
+    app = buildHttpApplication(sequentialIdGenerator(), new Date(reference.now));
+    const ingestion = await app.inject({
+      method: "POST",
+      url: "/logs",
+      payload: {
+        logs: [
+          {
+            timestamp: shift(cutoff, -2_000),
+            level: "info",
+            service: "retention-cursor-http",
+            message: "oldest continuation",
+          },
+          {
+            timestamp: shift(cutoff, -1_000),
+            level: "info",
+            service: "retention-cursor-http",
+            message: "newer continuation",
+          },
+          {
+            timestamp: shift(cutoff, 1_000),
+            level: "info",
+            service: "retention-cursor-http",
+            message: "retained first page",
+          },
+        ],
+      },
+    });
+    expect(ingestion.statusCode).toBe(200);
+
+    const firstResponse = await app.inject({
+      method: "GET",
+      url: "/logs?service=retention-cursor-http&limit=1",
+    });
+    expect(firstResponse.statusCode).toBe(200);
+    const firstPage = firstResponse.json<{
+      logs: { id: string; message: string }[];
+      next_cursor: string | null;
+    }>();
+    expect(firstPage.logs).toEqual([
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        timestamp: shift(cutoff, 1_000),
+        level: "info",
+        service: "retention-cursor-http",
+        message: "retained first page",
+        attributes: {},
+      },
+    ]);
+    expect(typeof firstPage.next_cursor).toBe("string");
+
+    const repository = createRetentionRepository(runtimePoolAdapter(runtimePool));
+    const retention = await repository.run(retentionRequest(reference, cutoff));
+    expect(retention.defaultRowsDeleted).toBe(2);
+
+    const continuation = await app.inject({
+      method: "GET",
+      url: `/logs?service=retention-cursor-http&limit=1&cursor=${encodeURIComponent(firstPage.next_cursor ?? "")}`,
+    });
+    expect(continuation.statusCode).toBe(200);
+    expect(continuation.body).toBe('{"logs":[],"next_cursor":null}');
+    for (const sensitive of ["fingerprint", "SELECT", "logstream.logs", "postgresql://"]) {
+      expect(continuation.body).not.toContain(sensitive);
+    }
+    const remaining = await runtimePool.query<{ id: string }>(
+      "SELECT id::text FROM logstream.logs WHERE service = $1 ORDER BY id",
+      ["retention-cursor-http"],
+    );
+    expect(remaining.rows).toEqual([{ id: "00000000-0000-4000-8000-000000000003" }]);
+  });
+
+  it("keeps retained HTTP traffic functional while bounded default cleanup is blocked", async () => {
+    if (runtimePool === undefined || ownerBaseUrl === undefined || adminBaseUrl === undefined) {
+      throw new Error("PostgreSQL integration resources are unavailable.");
+    }
+    const owner = new Client({
+      connectionString: databaseUrl(ownerBaseUrl, databaseName),
+    });
+    const observer = new Client({
+      connectionString: databaseUrl(adminBaseUrl, databaseName),
+    });
+    let blockerInstalled = false;
+    let blockerHeld = false;
+    let retentionRun: ReturnType<ReturnType<typeof createRetentionRepository>["run"]> | undefined;
+    await Promise.all([owner.connect(), observer.connect()]);
+    try {
+      const reference = await databaseReference(owner);
+      const cutoff = shift(reference.now, -30 * 86_400_000);
+      const currentTimestamps = [
+        shift(reference.now, -180_000),
+        shift(reference.now, -120_000),
+        shift(reference.now, -60_000),
+      ];
+      app = buildHttpApplication(sequentialIdGenerator(), new Date(reference.now));
+      const expired = await app.inject({
+        method: "POST",
+        url: "/logs",
+        payload: {
+          logs: [
+            {
+              timestamp: shift(cutoff, -1_000),
+              level: "warn",
+              service: "blocked-default-expired",
+              message: "expired default row",
+            },
+          ],
+        },
+      });
+      expect(expired.statusCode).toBe(200);
+
+      await installDefaultCleanupBlocker(owner);
+      blockerInstalled = true;
+      await owner.query("SELECT pg_catalog.pg_advisory_lock($1, $2)", [
+        coordinatorLockNamespace,
+        defaultBlockerLockId,
+      ]);
+      blockerHeld = true;
+      const repository = createRetentionRepository(runtimePoolAdapter(runtimePool));
+      retentionRun = repository.run(retentionRequest(reference, cutoff));
+      await waitForDefaultCleanupBlock(observer);
+      const coordinator = await observer.query<{ count: number }>(
+        `
+SELECT COUNT(*)::integer AS count
+FROM pg_catalog.pg_locks
+WHERE locktype = 'advisory'
+  AND database = (SELECT oid FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database())
+  AND classid = $1::integer::oid
+  AND objid = $2::integer::oid
+  AND granted
+`,
+        [coordinatorLockNamespace, coordinatorLockId],
+      );
+      expect(coordinator.rows).toEqual([{ count: 1 }]);
+
+      const currentIngestion = await app.inject({
+        method: "POST",
+        url: "/logs",
+        payload: {
+          logs: currentTimestamps.map((timestamp, index) => ({
+            timestamp,
+            level: "info",
+            service: "retained-during-cleanup",
+            message: `retained ${String(index + 1)}`,
+          })),
+        },
+      });
+      expect(currentIngestion.statusCode).toBe(200);
+      expect(currentIngestion.json()).toEqual({ accepted: 3, rejected: [] });
+
+      const since = encodeURIComponent(shift(reference.now, -5 * 60_000));
+      const until = encodeURIComponent(shift(reference.now, 60_000));
+      const [listResponse, aggregationResponse] = await Promise.all([
+        app.inject({
+          method: "GET",
+          url: `/logs?service=retained-during-cleanup&since=${since}&until=${until}`,
+        }),
+        app.inject({
+          method: "GET",
+          url: `/logs/aggregate?service=retained-during-cleanup&since=${since}&until=${until}&bucket=1m`,
+        }),
+      ]);
+      expect(listResponse.statusCode).toBe(200);
+      expect(listResponse.json<{ logs: unknown[] }>().logs).toHaveLength(3);
+      expect(aggregationResponse.statusCode).toBe(200);
+      expect(
+        aggregationResponse
+          .json<{ buckets: { count: number; group: string | null }[] }>()
+          .buckets.reduce((total, bucket) => total + bucket.count, 0),
+      ).toBe(3);
+      expect(
+        aggregationResponse
+          .json<{ buckets: { count: number; group: string | null }[] }>()
+          .buckets.every((bucket) => bucket.group === null),
+      ).toBe(true);
+      const duringCleanup = await runtimePool.query<{ count: number }>(
+        "SELECT COUNT(*)::integer AS count FROM logstream.logs WHERE service = $1",
+        ["retained-during-cleanup"],
+      );
+      expect(duringCleanup.rows).toEqual([{ count: 3 }]);
+
+      await owner.query("SELECT pg_catalog.pg_advisory_unlock($1, $2)", [
+        coordinatorLockNamespace,
+        defaultBlockerLockId,
+      ]);
+      blockerHeld = false;
+      const retention = await retentionRun;
+      expect(retention.status).toBe("completed");
+      expect(retention.defaultRowsDeleted).toBe(1);
+
+      const afterCleanup = await app.inject({
+        method: "GET",
+        url: "/logs?service=retained-during-cleanup",
+      });
+      expect(afterCleanup.statusCode).toBe(200);
+      expect(afterCleanup.json<{ logs: unknown[] }>().logs).toHaveLength(3);
+      const expiredCount = await runtimePool.query<{ count: number }>(
+        "SELECT COUNT(*)::integer AS count FROM logstream.logs WHERE service = $1",
+        ["blocked-default-expired"],
+      );
+      expect(expiredCount.rows).toEqual([{ count: 0 }]);
+    } finally {
+      if (blockerHeld) {
+        await owner.query("SELECT pg_catalog.pg_advisory_unlock($1, $2)", [
+          coordinatorLockNamespace,
+          defaultBlockerLockId,
+        ]);
+      }
+      if (retentionRun !== undefined) {
+        await Promise.allSettled([retentionRun]);
+      }
+      if (blockerInstalled) {
+        await removeDefaultCleanupBlocker(owner);
+      }
+      await Promise.all([owner.end(), observer.end()]);
+    }
   });
 
   it("aggregates ingested rows with every bucket, grouping, and shared filters", async () => {
