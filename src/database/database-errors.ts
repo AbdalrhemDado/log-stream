@@ -18,6 +18,11 @@ const TRANSIENT_DATABASE_CODES = new Set([
   "ETIMEDOUT",
 ]);
 
+const TRANSIENT_CODELESS_DATABASE_MESSAGES = new Set([
+  "Connection terminated unexpectedly",
+  "Connection terminated due to connection timeout",
+]);
+
 const INTERNAL_DATABASE_MESSAGE = "Database operation failed.";
 
 export class InternalDatabaseError extends Error {
@@ -27,25 +32,59 @@ export class InternalDatabaseError extends Error {
   }
 }
 
-function readErrorCode(error: unknown): string | undefined {
+type OwnStringProperty =
+  | { readonly kind: "absent" }
+  | { readonly kind: "unsafe" }
+  | { readonly kind: "value"; readonly value: string };
+
+function readOwnStringProperty(error: unknown, property: string): OwnStringProperty {
   if (typeof error !== "object" || error === null) {
-    return undefined;
+    return { kind: "absent" };
   }
 
   try {
-    const code: unknown = Reflect.get(error, "code");
-    return typeof code === "string" ? code : undefined;
+    const descriptor = Object.getOwnPropertyDescriptor(error, property);
+
+    if (descriptor === undefined) {
+      return { kind: "absent" };
+    }
+
+    if (!("value" in descriptor) || typeof descriptor.value !== "string") {
+      return { kind: "unsafe" };
+    }
+
+    return { kind: "value", value: descriptor.value };
   } catch {
-    return undefined;
+    return { kind: "unsafe" };
+  }
+}
+
+function isErrorInstance(error: unknown): error is Error {
+  try {
+    return error instanceof Error;
+  } catch {
+    return false;
   }
 }
 
 export function translateDatabaseError(
   error: unknown,
 ): InternalDatabaseError | TransientServiceError {
-  const code = readErrorCode(error);
+  const code = readOwnStringProperty(error, "code");
 
-  if (code !== undefined && TRANSIENT_DATABASE_CODES.has(code)) {
+  if (code.kind === "value") {
+    return TRANSIENT_DATABASE_CODES.has(code.value)
+      ? new TransientServiceError()
+      : new InternalDatabaseError();
+  }
+
+  if (code.kind === "unsafe" || !isErrorInstance(error)) {
+    return new InternalDatabaseError();
+  }
+
+  const message = readOwnStringProperty(error, "message");
+
+  if (message.kind === "value" && TRANSIENT_CODELESS_DATABASE_MESSAGES.has(message.value)) {
     return new TransientServiceError();
   }
 
