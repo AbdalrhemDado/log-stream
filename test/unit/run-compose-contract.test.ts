@@ -18,8 +18,21 @@ const NOW = 1_700_000_000_000;
 interface HarnessOverrides {
   readonly arguments?: readonly string[];
   readonly portAvailable?: boolean;
-  readonly command?: (request: CommandRequest, index: number) => Promise<CommandResult>;
+  readonly command?: (
+    request: CommandRequest,
+    index: number,
+    defaultResult: CommandResult,
+  ) => Promise<CommandResult>;
   readonly fetch?: typeof fetch;
+  readonly connectionFailureDuringInterruption?: boolean;
+  readonly omitShutdownRows?: boolean;
+}
+
+interface FakeRuntimeState {
+  appRunning: boolean;
+  appExitCode: number;
+  postgresRunning: boolean;
+  readonly shutdownMessages: string[];
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -36,23 +49,86 @@ function requestUrl(input: string | URL | Request): string {
   return input instanceof URL ? input.href : input.url;
 }
 
-function createFetch(): typeof fetch {
+function createFetch(
+  state: FakeRuntimeState,
+  onRequest: (event: string) => void = () => undefined,
+  behavior: {
+    readonly connectionFailureDuringInterruption?: boolean;
+    readonly omitShutdownRows?: boolean;
+  } = {},
+): typeof fetch {
   return vi.fn<typeof fetch>((input, init) => {
     const url = requestUrl(input);
+    onRequest(
+      `http:${init?.method ?? "GET"}:${url}${typeof init?.body === "string" ? `:${init.body}` : ""}`,
+    );
+    if (!state.appRunning) {
+      return Promise.reject(new Error("application unavailable"));
+    }
     if (url.endsWith("/health")) {
-      return Promise.resolve(new Response("healthy", { status: 200 }));
+      return Promise.resolve(
+        jsonResponse(
+          state.postgresRunning ? { status: "ok" } : { status: "unavailable" },
+          state.postgresRunning ? 200 : 503,
+        ),
+      );
+    }
+    if (!state.postgresRunning) {
+      if (behavior.connectionFailureDuringInterruption === true) {
+        return Promise.reject(new Error("connection interrupted"));
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "Service temporarily unavailable." }), {
+          status: 503,
+          headers: { "content-type": "application/json", "retry-after": "30" },
+        }),
+      );
     }
     if (init?.method === "POST") {
-      return Promise.resolve(jsonResponse({ accepted: 1, rejected: [] }));
+      if (typeof init.body !== "string") {
+        return Promise.reject(new Error("unexpected request body"));
+      }
+      const parsed = JSON.parse(init.body) as {
+        logs: { service: string; message: string }[];
+      };
+      const shutdown = parsed.logs.filter((log) => log.service.endsWith("-shutdown-wave"));
+      state.shutdownMessages.push(...shutdown.map((log) => log.message));
+      return Promise.resolve(jsonResponse({ accepted: parsed.logs.length, rejected: [] }));
+    }
+    if (url.includes("/logs/aggregate")) {
+      return Promise.resolve(jsonResponse({ buckets: [] }));
     }
     const service = new URL(url).searchParams.get("service") ?? "";
-    const runId = service.replace(/-restart-marker$/u, "");
+    if (service.endsWith("-interruption-failed-marker")) {
+      return Promise.resolve(jsonResponse({ logs: [], next_cursor: null }));
+    }
+    if (service.endsWith("-shutdown-wave")) {
+      return Promise.resolve(
+        jsonResponse({
+          logs:
+            behavior.omitShutdownRows === true
+              ? []
+              : state.shutdownMessages.map((message, index) => ({
+                  id: String(index),
+                  service,
+                  message,
+                })),
+          next_cursor: null,
+        }),
+      );
+    }
+    const runId = service
+      .replace(/-restart-marker$/u, "")
+      .replace(/-(?:interruption-recovery|startup-recovery|shutdown-recovery)-canary$/u, "");
+    const message = service.endsWith("-restart-marker")
+      ? `${runId}-persistent-message`
+      : `${service.replace(/-canary$/u, "")}-message`;
     return Promise.resolve(
       jsonResponse({
         logs: [
           {
             service,
-            message: `${runId}-persistent-message`,
+            message,
           },
         ],
         next_cursor: null,
@@ -63,16 +139,69 @@ function createFetch(): typeof fetch {
 
 async function execute(overrides: HarnessOverrides = {}): Promise<{
   readonly commands: CommandRequest[];
+  readonly events: readonly string[];
   readonly fetchMock: ReturnType<typeof vi.fn<typeof fetch>>;
 }> {
   const commands: CommandRequest[] = [];
-  const fetchMock = (overrides.fetch ?? createFetch()) as ReturnType<typeof vi.fn<typeof fetch>>;
+  const events: string[] = [];
+  const state: FakeRuntimeState = {
+    appRunning: true,
+    appExitCode: 0,
+    postgresRunning: true,
+    shutdownMessages: [],
+  };
+  const fetchMock = (overrides.fetch ??
+    createFetch(state, (event) => events.push(event), {
+      ...(overrides.connectionFailureDuringInterruption === undefined
+        ? {}
+        : {
+            connectionFailureDuringInterruption: overrides.connectionFailureDuringInterruption,
+          }),
+      ...(overrides.omitShutdownRows === undefined
+        ? {}
+        : { omitShutdownRows: overrides.omitShutdownRows }),
+    })) as ReturnType<typeof vi.fn<typeof fetch>>;
   const dependencies: ComposeContractDependencies = {
     runCommand: (request) => {
       commands.push(request);
+      events.push(`command:${request.command}:${request.arguments.join(" ")}`);
+      const arguments_ = request.arguments;
+      const service = arguments_.at(-1);
+      if (arguments_.includes("stop") && service === "postgres") {
+        state.postgresRunning = false;
+      } else if (arguments_.includes("start") && service === "postgres") {
+        state.postgresRunning = true;
+      } else if (arguments_.includes("stop") && service === "app") {
+        state.appRunning = false;
+        state.appExitCode = 0;
+      } else if (arguments_.includes("kill") && service === "app") {
+        state.appRunning = false;
+        state.appExitCode = 0;
+      } else if (arguments_.includes("up") && service === "app") {
+        state.appRunning = state.postgresRunning;
+        state.appExitCode = state.postgresRunning ? 0 : 1;
+      } else if (arguments_.includes("up") && !arguments_.includes("--no-deps")) {
+        state.appRunning = true;
+        state.appExitCode = 0;
+        state.postgresRunning = true;
+      }
+      const defaultResult =
+        arguments_[0] === "compose" && arguments_.includes("ps") && arguments_.includes("--quiet")
+          ? { exitCode: 0, stdout: "a".repeat(64), stderr: "" }
+          : request.command === "docker" && arguments_[0] === "inspect"
+            ? {
+                exitCode: 0,
+                stdout: JSON.stringify({
+                  Running: state.appRunning,
+                  OOMKilled: false,
+                  ExitCode: state.appExitCode,
+                }),
+                stderr: "",
+              }
+            : { exitCode: 0, stdout: "", stderr: "" };
       return (
-        overrides.command?.(request, commands.length - 1) ??
-        Promise.resolve({ exitCode: 0, stdout: "", stderr: "" })
+        overrides.command?.(request, commands.length - 1, defaultResult) ??
+        Promise.resolve(defaultResult)
       );
     },
     isPortAvailable: () => Promise.resolve(overrides.portAvailable ?? true),
@@ -90,7 +219,7 @@ async function execute(overrides: HarnessOverrides = {}): Promise<{
     },
     dependencies,
   );
-  return { commands, fetchMock };
+  return { commands, events, fetchMock };
 }
 
 function composeOperations(commands: readonly CommandRequest[]): readonly CommandRequest[] {
@@ -229,7 +358,12 @@ describe("Compose contract harness", () => {
             return Promise.resolve({ exitCode: 0, stdout: "", stderr: "" });
           },
           isPortAvailable: () => Promise.resolve(false),
-          fetch: createFetch(),
+          fetch: createFetch({
+            appRunning: true,
+            appExitCode: 0,
+            postgresRunning: true,
+            shutdownMessages: [],
+          }),
           now: () => NOW,
           delay: () => Promise.resolve(),
         },
@@ -244,7 +378,7 @@ describe("Compose contract harness", () => {
     let error: unknown;
     try {
       await execute({
-        command: (request) => {
+        command: (request, _index, defaultResult) => {
           if (request.arguments.includes("up")) {
             return Promise.resolve({ exitCode: 1, stdout: sentinel, stderr: sentinel });
           }
@@ -252,7 +386,7 @@ describe("Compose contract harness", () => {
             cleanupAttempted = true;
             return Promise.resolve({ exitCode: 1, stdout: sentinel, stderr: sentinel });
           }
-          return Promise.resolve({ exitCode: 0, stdout: "", stderr: "" });
+          return Promise.resolve(defaultResult);
         },
       });
     } catch (caught: unknown) {
@@ -268,10 +402,10 @@ describe("Compose contract harness", () => {
     let error: unknown;
     try {
       await execute({
-        command: (request) =>
+        command: (request, _index, defaultResult) =>
           request.arguments.includes("--volumes")
             ? Promise.resolve({ exitCode: 1, stdout: sentinel, stderr: sentinel })
-            : Promise.resolve({ exitCode: 0, stdout: "", stderr: "" }),
+            : Promise.resolve(defaultResult),
       });
     } catch (caught: unknown) {
       error = caught;
@@ -287,8 +421,178 @@ describe("Compose contract harness", () => {
 
     expect(vitest?.inheritOutput).toBe(true);
     expect(vitest?.arguments).toContain("test/contract/public-api.contract.test.ts");
+    expect(vitest?.arguments).toContain("test/contract/failure-security.contract.test.ts");
     expect(docker.every((command) => !command.inheritOutput)).toBe(true);
   });
+
+  it("uses exact-project database interruption and startup recovery commands", async () => {
+    const { commands, events } = await execute();
+    const compose = composeOperations(commands);
+    const stopPostgres = compose.find(
+      (command) => command.arguments.includes("stop") && command.arguments.at(-1) === "postgres",
+    );
+    const noDependencyApp = compose.find(
+      (command) =>
+        command.arguments.includes("up") &&
+        command.arguments.includes("--no-deps") &&
+        command.arguments.at(-1) === "app",
+    );
+    const startPostgresIndex = compose.findLastIndex(
+      (command) => command.arguments.includes("start") && command.arguments.at(-1) === "postgres",
+    );
+    const recoveredAppIndex = compose.findIndex(
+      (command, index) =>
+        index > startPostgresIndex &&
+        command.arguments.includes("up") &&
+        command.arguments.at(-1) === "app",
+    );
+
+    expect(stopPostgres).toBeDefined();
+    expect(noDependencyApp).toBeDefined();
+    expect(startPostgresIndex).toBeGreaterThanOrEqual(0);
+    expect(recoveredAppIndex).toBeGreaterThan(startPostgresIndex);
+    expect(compose[recoveredAppIndex]?.arguments).toContain("--force-recreate");
+    const failedStartupIndex = events.findIndex((event) =>
+      event.startsWith("command:docker:inspect --format"),
+    );
+    const startPostgresEventIndex = events.findIndex(
+      (event, index) => index > failedStartupIndex && event.includes(" start postgres"),
+    );
+    expect(failedStartupIndex).toBeGreaterThanOrEqual(0);
+    expect(startPostgresEventIndex).toBeGreaterThan(failedStartupIndex);
+    expect(compose.map((command) => command.shell)).toEqual(compose.map(() => false));
+  });
+
+  it("issues the bounded ingestion wave before exact-app SIGTERM and reconciles after restart", async () => {
+    const { commands, events } = await execute();
+    const shutdownPostIndex = events.findIndex(
+      (event) => event.startsWith("http:POST:") && event.includes("shutdown-wave"),
+    );
+    const signalIndex = events.findIndex(
+      (event) => event.startsWith("command:docker:") && event.includes("kill --signal SIGTERM app"),
+    );
+    const signal = commands.find(
+      (command) => command.arguments.includes("kill") && command.arguments.at(-1) === "app",
+    );
+
+    expect(shutdownPostIndex).toBeGreaterThanOrEqual(0);
+    expect(signalIndex).toBeGreaterThan(shutdownPostIndex);
+    expect(signal?.arguments).toContain("SIGTERM");
+    expect(signal?.arguments).not.toContain("SIGKILL");
+    expect(
+      events.some(
+        (event, index) => index > signalIndex && event.includes("shutdown-wave&limit=1000"),
+      ),
+    ).toBe(true);
+  });
+
+  it("fails if health reports ready after PostgreSQL is stopped", async () => {
+    const alwaysHealthy = vi.fn<typeof fetch>((input, init) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/health")) {
+        return Promise.resolve(jsonResponse({ status: "ok" }));
+      }
+      if (init?.method === "POST") {
+        return Promise.resolve(jsonResponse({ accepted: 1, rejected: [] }));
+      }
+      return Promise.resolve(jsonResponse({ logs: [], next_cursor: null }));
+    });
+
+    await expect(execute({ fetch: alwaysHealthy })).rejects.toThrow(
+      "Contract database interruption health verification failed.",
+    );
+  });
+
+  it("requires Retry-After on a transient database interruption response", async () => {
+    let postgresStopped = false;
+    const missingRetryAfter = vi.fn<typeof fetch>((input, init) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/health")) {
+        return Promise.resolve(
+          jsonResponse(
+            postgresStopped ? { status: "unavailable" } : { status: "ok" },
+            postgresStopped ? 503 : 200,
+          ),
+        );
+      }
+      if (postgresStopped) {
+        return Promise.resolve(jsonResponse({ error: "Service temporarily unavailable." }, 503));
+      }
+      if (init?.method === "POST") {
+        return Promise.resolve(jsonResponse({ accepted: 1, rejected: [] }));
+      }
+      return Promise.resolve(jsonResponse({ logs: [], next_cursor: null }));
+    });
+
+    await expect(
+      execute({
+        fetch: missingRetryAfter,
+        command: (request, _index, defaultResult) => {
+          if (request.arguments.includes("stop") && request.arguments.at(-1) === "postgres") {
+            postgresStopped = true;
+          }
+          return Promise.resolve(defaultResult);
+        },
+      }),
+    ).rejects.toThrow("Contract database interruption ingestion verification failed.");
+  });
+
+  it("classifies database connection interruption as unaccepted without inventing a status", async () => {
+    await expect(execute({ connectionFailureDuringInterruption: true })).resolves.toBeDefined();
+  });
+
+  it("fails reconciliation when a row reported accepted is missing after shutdown restart", async () => {
+    await expect(execute({ omitShutdownRows: true })).rejects.toThrow(
+      "Contract graceful shutdown verification failed.",
+    );
+  });
+
+  it("captures and rejects credential-bearing application logs without reflecting them", async () => {
+    let error: unknown;
+    try {
+      await execute({
+        command: (request, _index, defaultResult) =>
+          request.arguments.includes("logs")
+            ? Promise.resolve({
+                exitCode: 0,
+                stdout: "postgresql://user:local_runtime_password@database/internal",
+                stderr: "",
+              })
+            : Promise.resolve(defaultResult),
+      });
+    } catch (caught: unknown) {
+      error = caught;
+    }
+    expect((error as Error).message).toBe(
+      "Contract application-log redaction verification failed.",
+    );
+    expect((error as Error).message).not.toContain("local_runtime_password");
+  });
+
+  it.each([
+    "%27%29%3B+DROP+TABLE+logstream.logs%3B+--",
+    "%27%29%3B%20DROP%20TABLE%20logstream.logs%3B%20--",
+  ])(
+    "rejects an encoded query sentinel in captured logs without reflecting it: %s",
+    async (sentinel) => {
+      let error: unknown;
+      try {
+        await execute({
+          command: (request, _index, defaultResult) =>
+            request.arguments.includes("logs")
+              ? Promise.resolve({ exitCode: 0, stdout: sentinel, stderr: "" })
+              : Promise.resolve(defaultResult),
+        });
+      } catch (caught: unknown) {
+        error = caught;
+      }
+
+      expect((error as Error).message).toBe(
+        "Contract application-log redaction verification failed.",
+      );
+      expect((error as Error).message).not.toContain(sentinel);
+    },
+  );
 
   it("preserves the named volume during restart and removes it during final cleanup", async () => {
     const { commands } = await execute();
@@ -335,10 +639,10 @@ describe("Compose contract harness", () => {
   it("refuses success when an exact-project resource remains", async () => {
     await expect(
       execute({
-        command: (request) =>
+        command: (request, _index, defaultResult) =>
           request.arguments[0] === "ps"
             ? Promise.resolve({ exitCode: 0, stdout: "remaining-resource", stderr: "" })
-            : Promise.resolve({ exitCode: 0, stdout: "", stderr: "" }),
+            : Promise.resolve(defaultResult),
       }),
     ).rejects.toThrow("Contract Compose cleanup could not be verified.");
   });
