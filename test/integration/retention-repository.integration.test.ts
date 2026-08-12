@@ -11,7 +11,14 @@ import type { CanonicalUtcTimestamp } from "../../src/domain/log-entry.js";
 import {
   createRetentionRepository,
   type RetentionDatabasePool,
+  type RetentionRunRequest,
 } from "../../src/modules/retention/retention-repository.js";
+import {
+  createRetentionService,
+  stopRetentionBeforeDatabase,
+  type RetentionLogger,
+  type RetentionTimer,
+} from "../../src/modules/retention/retention-service.js";
 
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
 const adminBaseUrl = process.env["TEST_ADMIN_DATABASE_URL"];
@@ -21,6 +28,11 @@ const hasPostgresEnvironment =
   adminBaseUrl !== undefined && ownerBaseUrl !== undefined && runtimeBaseUrl !== undefined;
 let databaseSequence = 0;
 let databaseName = "";
+const coordinatorLockNamespace = 1_815_642_963;
+const coordinatorLockId = 2;
+const defaultBlockerLockId = 70_021;
+const defaultBlockerFunctionName = "retention_test_block_default_delete";
+const defaultBlockerTriggerName = "retention_test_block_default_delete_trigger";
 
 function databaseUrl(baseUrl: string, name: string): string {
   const url = new URL(baseUrl);
@@ -45,6 +57,13 @@ function trustedPartitionIdentifier(name: string): string {
 function trustedNestedPartitionIdentifier(name: string): string {
   if (!/^logs_[0-9]{8}_nested$/u.test(name)) {
     throw new Error("Refusing an unexpected nested retention-test partition identifier.");
+  }
+  return `"${name}"`;
+}
+
+function trustedTestObjectIdentifier(name: string): string {
+  if (!/^retention_test_[a-z_]+$/u.test(name)) {
+    throw new Error("Refusing an unexpected retention-test object identifier.");
   }
   return `"${name}"`;
 }
@@ -110,6 +129,130 @@ SELECT
 
 function shift(timestamp: string, milliseconds: number): CanonicalUtcTimestamp {
   return new Date(Date.parse(timestamp) + milliseconds).toISOString() as CanonicalUtcTimestamp;
+}
+
+function retentionRequest(
+  reference: { readonly now: CanonicalUtcTimestamp },
+  cutoff: CanonicalUtcTimestamp,
+  signal = new AbortController().signal,
+): RetentionRunRequest {
+  const partitions = buildPartitionPlan(new Date(reference.now), 1).slice(1);
+  if (partitions.length !== 3) {
+    throw new Error("Expected exactly three retention partitions.");
+  }
+  return { referenceTime: reference.now, cutoff, partitions, signal };
+}
+
+async function waitForCondition(
+  condition: () => boolean | Promise<boolean>,
+  failureMessage: string,
+): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    if (await condition()) {
+      return;
+    }
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20);
+    });
+  }
+  throw new Error(failureMessage);
+}
+
+async function waitForRuntimeLockWait(observer: Client, queryFragment: string): Promise<void> {
+  await waitForCondition(async () => {
+    const result = await observer.query<{ blocked: boolean }>(
+      `
+SELECT EXISTS (
+  SELECT 1
+  FROM pg_catalog.pg_stat_activity
+  WHERE datname = pg_catalog.current_database()
+    AND usename = 'logstream_runtime'
+    AND state = 'active'
+    AND wait_event_type = 'Lock'
+    AND query LIKE $1
+) AS blocked
+`,
+      [`%${queryFragment}%`],
+    );
+    return result.rows[0]?.blocked === true;
+  }, `Runtime query did not become observably blocked: ${queryFragment}`);
+}
+
+async function advisoryLockCount(observer: Client, lockId: number): Promise<number> {
+  const result = await observer.query<{ count: number }>(
+    `
+SELECT COUNT(*)::integer AS count
+FROM pg_catalog.pg_locks
+WHERE locktype = 'advisory'
+  AND database = (SELECT oid FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database())
+  AND classid = $1::integer::oid
+  AND objid = $2::integer::oid
+  AND granted
+`,
+    [coordinatorLockNamespace, lockId],
+  );
+  return result.rows[0]?.count ?? -1;
+}
+
+async function installDefaultCleanupBlocker(owner: Client): Promise<void> {
+  const functionIdentifier = trustedTestObjectIdentifier(defaultBlockerFunctionName);
+  const triggerIdentifier = trustedTestObjectIdentifier(defaultBlockerTriggerName);
+  await owner.query(`
+CREATE FUNCTION logstream.${functionIdentifier}() RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, pg_temp
+AS $$
+BEGIN
+  PERFORM pg_catalog.pg_advisory_xact_lock(${String(coordinatorLockNamespace)}, ${String(defaultBlockerLockId)});
+  RETURN OLD;
+END
+$$;
+CREATE TRIGGER ${triggerIdentifier}
+BEFORE DELETE ON logstream.logs_default
+FOR EACH ROW EXECUTE FUNCTION logstream.${functionIdentifier}();
+`);
+}
+
+async function removeDefaultCleanupBlocker(owner: Client): Promise<void> {
+  const functionIdentifier = trustedTestObjectIdentifier(defaultBlockerFunctionName);
+  const triggerIdentifier = trustedTestObjectIdentifier(defaultBlockerTriggerName);
+  await owner.query(`
+DROP TRIGGER IF EXISTS ${triggerIdentifier} ON logstream.logs_default;
+DROP FUNCTION IF EXISTS logstream.${functionIdentifier}();
+`);
+}
+
+function createControlledTimer(): {
+  readonly timer: RetentionTimer;
+  activeCount(): number;
+  runNext(): void;
+} {
+  let sequence = 0;
+  const tasks = new Map<number, () => void>();
+  return {
+    timer: {
+      schedule: (callback) => {
+        sequence += 1;
+        tasks.set(sequence, callback);
+        return sequence;
+      },
+      cancel: (handle) => {
+        if (typeof handle === "number") {
+          tasks.delete(handle);
+        }
+      },
+    },
+    activeCount: () => tasks.size,
+    runNext: () => {
+      const next = tasks.entries().next().value as [number, () => void] | undefined;
+      if (next === undefined) {
+        throw new Error("No retention timer is scheduled.");
+      }
+      tasks.delete(next[0]);
+      next[1]();
+    },
+  };
 }
 
 async function insertLog(
@@ -677,6 +820,381 @@ ORDER BY child.relname
           shift(cutoff, 1),
         ]);
       });
+    });
+
+    it("allows only one repository coordinator while an expired partition drop waits", async () => {
+      const ownerUrl = databaseUrl(ownerBaseUrl ?? "", databaseName);
+      const runtimeUrl = databaseUrl(runtimeBaseUrl ?? "", databaseName);
+      const adminUrl = databaseUrl(adminBaseUrl ?? "", databaseName);
+      const owner = new Client({ connectionString: ownerUrl });
+      const observer = new Client({ connectionString: adminUrl });
+      const pool = new Pool({ connectionString: runtimeUrl, max: 2 });
+      let ownerTransactionOpen = false;
+      let firstRun:
+        | Promise<Awaited<ReturnType<ReturnType<typeof createRetentionRepository>["run"]>>>
+        | undefined;
+      await Promise.all([owner.connect(), observer.connect()]);
+      try {
+        const reference = await databaseReference(owner);
+        const yesterday = shift(reference.utcDay, -86_400_000);
+        const partitionName = buildPartitionPlan(new Date(reference.now), 1)[0]?.name;
+        if (partitionName === undefined) {
+          throw new Error("Expected previous-day partition name.");
+        }
+        await owner.query("SELECT logstream.ensure_log_partition($1)", [yesterday]);
+        await insertLog(
+          owner,
+          shift(yesterday, 60 * 60 * 1_000),
+          "00000000-0000-4000-8000-000000000040",
+        );
+        await owner.query("BEGIN");
+        ownerTransactionOpen = true;
+        await owner.query(
+          `LOCK TABLE logstream.${trustedPartitionIdentifier(partitionName)} IN ACCESS SHARE MODE`,
+        );
+
+        const repository = createRetentionRepository(runtimePoolAdapter(pool));
+        const request = retentionRequest(reference, reference.now);
+        firstRun = repository.run(request);
+        await waitForRuntimeLockWait(observer, "drop_one_expired_log_partition");
+        expect(await advisoryLockCount(observer, coordinatorLockId)).toBe(1);
+
+        await expect(repository.run(request)).resolves.toEqual({
+          status: "skipped",
+          partitionEnsureCalls: 0,
+          partitionsCreated: 0,
+          partitionDropCalls: 0,
+          partitionsDropped: 0,
+          defaultCleanupCalls: 0,
+          defaultRowsDeleted: 0,
+          partitionDropBudgetReached: false,
+          defaultDeleteBudgetReached: false,
+        });
+
+        await owner.query("COMMIT");
+        ownerTransactionOpen = false;
+        await expect(firstRun).resolves.toEqual({
+          status: "completed",
+          partitionEnsureCalls: 3,
+          partitionsCreated: 3,
+          partitionDropCalls: 2,
+          partitionsDropped: 1,
+          defaultCleanupCalls: 1,
+          defaultRowsDeleted: 0,
+          partitionDropBudgetReached: false,
+          defaultDeleteBudgetReached: false,
+        });
+        const evidence = await observer.query<{ relation: string | null }>(
+          "SELECT pg_catalog.to_regclass($1)::text AS relation",
+          [`logstream.${partitionName}`],
+        );
+        expect(evidence.rows).toEqual([{ relation: null }]);
+        expect(await advisoryLockCount(observer, coordinatorLockId)).toBe(0);
+        expect(pool.waitingCount).toBe(0);
+        expect(pool.idleCount).toBe(pool.totalCount);
+      } finally {
+        if (ownerTransactionOpen) {
+          await owner.query("ROLLBACK");
+        }
+        if (firstRun !== undefined) {
+          await Promise.allSettled([firstRun]);
+        }
+        await pool.end();
+        await Promise.all([owner.end(), observer.end()]);
+      }
+    });
+
+    it("skips row-locked default entries and deletes them after their lockers settle", async () => {
+      const ownerUrl = databaseUrl(ownerBaseUrl ?? "", databaseName);
+      const runtimeUrl = databaseUrl(runtimeBaseUrl ?? "", databaseName);
+      const owner = new Client({ connectionString: ownerUrl });
+      const firstLocker = new Client({ connectionString: ownerUrl });
+      const secondLocker = new Client({ connectionString: ownerUrl });
+      const runtime = new Client({ connectionString: runtimeUrl });
+      let firstTransactionOpen = false;
+      let secondTransactionOpen = false;
+      await Promise.all([
+        owner.connect(),
+        firstLocker.connect(),
+        secondLocker.connect(),
+        runtime.connect(),
+      ]);
+      try {
+        const reference = await databaseReference(owner);
+        const cutoff = shift(reference.now, -30 * 86_400_000);
+        const expiredIds = Array.from(
+          { length: 6 },
+          (_, index) => `00000000-0000-4000-8000-${(50 + index).toString().padStart(12, "0")}`,
+        );
+        for (const [index, id] of expiredIds.entries()) {
+          await insertLog(owner, shift(cutoff, -(index + 1) * 1_000), id);
+        }
+        const equalId = "00000000-0000-4000-8000-000000000060";
+        const newerId = "00000000-0000-4000-8000-000000000061";
+        await insertLog(owner, cutoff, equalId);
+        await insertLog(owner, shift(cutoff, 1_000), newerId);
+
+        await firstLocker.query("BEGIN");
+        firstTransactionOpen = true;
+        await secondLocker.query("BEGIN");
+        secondTransactionOpen = true;
+        await firstLocker.query(
+          "SELECT id FROM logstream.logs_default WHERE id = $1::uuid FOR UPDATE",
+          [expiredIds[0]],
+        );
+        await secondLocker.query(
+          "SELECT id FROM logstream.logs_default WHERE id = $1::uuid FOR UPDATE",
+          [expiredIds[1]],
+        );
+
+        await expect(
+          runtime.query<{ deleted: number }>(
+            "SELECT logstream.delete_expired_default_logs($1, 100) AS deleted",
+            [cutoff],
+          ),
+        ).resolves.toMatchObject({ rows: [{ deleted: 4 }] });
+        const whileLocked = await owner.query<{ id: string }>(
+          "SELECT id::text FROM logstream.logs ORDER BY id",
+        );
+        expect(whileLocked.rows.map((row) => row.id)).toEqual([
+          expiredIds[0],
+          expiredIds[1],
+          equalId,
+          newerId,
+        ]);
+
+        await firstLocker.query("COMMIT");
+        firstTransactionOpen = false;
+        await secondLocker.query("COMMIT");
+        secondTransactionOpen = false;
+        await expect(
+          runtime.query<{ deleted: number }>(
+            "SELECT logstream.delete_expired_default_logs($1, 100) AS deleted",
+            [cutoff],
+          ),
+        ).resolves.toMatchObject({ rows: [{ deleted: 2 }] });
+        await expect(
+          runtime.query<{ deleted: number }>(
+            "SELECT logstream.delete_expired_default_logs($1, 100) AS deleted",
+            [cutoff],
+          ),
+        ).resolves.toMatchObject({ rows: [{ deleted: 0 }] });
+
+        const remaining = await owner.query<{ id: string; timestamp: Date }>(
+          "SELECT id::text, timestamp FROM logstream.logs ORDER BY timestamp, id",
+        );
+        expect(remaining.rows.map((row) => [row.id, row.timestamp.toISOString()])).toEqual([
+          [equalId, cutoff],
+          [newerId, shift(cutoff, 1_000)],
+        ]);
+      } finally {
+        if (firstTransactionOpen) {
+          await firstLocker.query("ROLLBACK");
+        }
+        if (secondTransactionOpen) {
+          await secondLocker.query("ROLLBACK");
+        }
+        await Promise.all([owner.end(), firstLocker.end(), secondLocker.end(), runtime.end()]);
+      }
+    });
+
+    it("logs a real database failure safely and succeeds on the scheduled retry", async () => {
+      const ownerUrl = databaseUrl(ownerBaseUrl ?? "", databaseName);
+      const runtimeUrl = databaseUrl(runtimeBaseUrl ?? "", databaseName);
+      const owner = new Client({ connectionString: ownerUrl });
+      const pool = new Pool({ connectionString: runtimeUrl, max: 2 });
+      const controlledTimer = createControlledTimer();
+      const information: { fields: Readonly<Record<string, unknown>>; message: string }[] = [];
+      const failures: { fields: Readonly<Record<string, unknown>>; message: string }[] = [];
+      const logger: RetentionLogger = {
+        info: (fields, message) => information.push({ fields, message }),
+        error: (fields, message) => failures.push({ fields, message }),
+      };
+      let service: ReturnType<typeof createRetentionService> | undefined;
+      let collisionName: string | undefined;
+      let activeRuns = 0;
+      let maximumActiveRuns = 0;
+      await owner.connect();
+      try {
+        const reference = await databaseReference(owner);
+        collisionName = buildPartitionPlan(new Date(reference.now), 1)[1]?.name;
+        if (collisionName === undefined) {
+          throw new Error("Expected current partition name.");
+        }
+        await owner.query(
+          `CREATE TABLE logstream.${trustedPartitionIdentifier(collisionName)} (id integer)`,
+        );
+        const realRepository = createRetentionRepository(runtimePoolAdapter(pool));
+        service = createRetentionService({
+          repository: {
+            run: async (request) => {
+              activeRuns += 1;
+              maximumActiveRuns = Math.max(maximumActiveRuns, activeRuns);
+              try {
+                return await realRepository.run(request);
+              } finally {
+                activeRuns -= 1;
+              }
+            },
+          },
+          retentionDays: 30,
+          retentionIntervalMs: 60_000,
+          clock: { now: () => Date.parse(reference.now) },
+          timer: controlledTimer.timer,
+          logger,
+        });
+        service.start();
+        await waitForCondition(
+          () => failures.length === 1 && controlledTimer.activeCount() === 1,
+          "Retention failure did not settle and schedule its retry.",
+        );
+        expect(failures).toEqual([
+          { fields: { failureType: "retention-run" }, message: "Retention maintenance failed" },
+        ]);
+        const serializedFailure = JSON.stringify(failures);
+        for (const sensitive of [
+          collisionName,
+          "Retention partition relation is invalid.",
+          "P0001",
+          "CREATE TABLE",
+          "postgresql://",
+        ]) {
+          expect(serializedFailure).not.toContain(sensitive);
+        }
+
+        await owner.query(`DROP TABLE logstream.${trustedPartitionIdentifier(collisionName)}`);
+        collisionName = undefined;
+        controlledTimer.runNext();
+        await waitForCondition(
+          () => information.length === 1 && controlledTimer.activeCount() === 1,
+          "Retention retry did not complete and schedule its next run.",
+        );
+        expect(information).toEqual([
+          {
+            fields: {
+              status: "completed",
+              partitionEnsureCalls: 3,
+              partitionsCreated: 3,
+              partitionDropCalls: 1,
+              partitionsDropped: 0,
+              defaultCleanupCalls: 1,
+              defaultRowsDeleted: 0,
+              partitionDropBudgetReached: false,
+              defaultDeleteBudgetReached: false,
+            },
+            message: "Retention maintenance settled",
+          },
+        ]);
+        expect(maximumActiveRuns).toBe(1);
+        await service.stop();
+        expect(controlledTimer.activeCount()).toBe(0);
+      } finally {
+        if (service !== undefined) {
+          await service.stop();
+        }
+        if (collisionName !== undefined) {
+          await owner.query(
+            `DROP TABLE IF EXISTS logstream.${trustedPartitionIdentifier(collisionName)}`,
+          );
+        }
+        await pool.end();
+        await owner.end();
+      }
+    });
+
+    it("waits for blocked default cleanup before closing the pool during shutdown", async () => {
+      const ownerUrl = databaseUrl(ownerBaseUrl ?? "", databaseName);
+      const runtimeUrl = databaseUrl(runtimeBaseUrl ?? "", databaseName);
+      const adminUrl = databaseUrl(adminBaseUrl ?? "", databaseName);
+      const owner = new Client({ connectionString: ownerUrl });
+      const observer = new Client({ connectionString: adminUrl });
+      const pool = new Pool({ connectionString: runtimeUrl, max: 1 });
+      const controlledTimer = createControlledTimer();
+      let blockerHeld = false;
+      let blockerInstalled = false;
+      let poolCloseCalls = 0;
+      let observedSignal: AbortSignal | undefined;
+      let service: ReturnType<typeof createRetentionService> | undefined;
+      let shutdown: Promise<void> | undefined;
+      await Promise.all([owner.connect(), observer.connect()]);
+      try {
+        const reference = await databaseReference(owner);
+        const cutoff = shift(reference.now, -30 * 86_400_000);
+        await insertLog(owner, shift(cutoff, -1_000), "00000000-0000-4000-8000-000000000070");
+        await installDefaultCleanupBlocker(owner);
+        blockerInstalled = true;
+        await owner.query("SELECT pg_catalog.pg_advisory_lock($1, $2)", [
+          coordinatorLockNamespace,
+          defaultBlockerLockId,
+        ]);
+        blockerHeld = true;
+
+        const realRepository = createRetentionRepository(runtimePoolAdapter(pool));
+        service = createRetentionService({
+          repository: {
+            run: async (request) => {
+              observedSignal = request.signal;
+              return realRepository.run(request);
+            },
+          },
+          retentionDays: 30,
+          retentionIntervalMs: 60_000,
+          clock: { now: () => Date.parse(reference.now) },
+          timer: controlledTimer.timer,
+          logger: { info: () => undefined, error: () => undefined },
+        });
+        service.start();
+        await waitForRuntimeLockWait(observer, "delete_expired_default_logs");
+        expect(await advisoryLockCount(observer, coordinatorLockId)).toBe(1);
+
+        const firstStop = service.stop();
+        const repeatedStop = service.stop();
+        expect(repeatedStop).toBe(firstStop);
+        shutdown = stopRetentionBeforeDatabase(service, async () => {
+          poolCloseCalls += 1;
+          await pool.end();
+        });
+        await Promise.resolve();
+        expect(observedSignal?.aborted).toBe(true);
+        expect(poolCloseCalls).toBe(0);
+
+        await owner.query("SELECT pg_catalog.pg_advisory_unlock($1, $2)", [
+          coordinatorLockNamespace,
+          defaultBlockerLockId,
+        ]);
+        blockerHeld = false;
+        await Promise.all([firstStop, repeatedStop, shutdown]);
+        expect(poolCloseCalls).toBe(1);
+        expect(controlledTimer.activeCount()).toBe(0);
+        expect(await advisoryLockCount(observer, coordinatorLockId)).toBe(0);
+        expect(await advisoryLockCount(observer, defaultBlockerLockId)).toBe(0);
+        const connections = await observer.query<{ count: number }>(`
+SELECT COUNT(*)::integer AS count
+FROM pg_catalog.pg_stat_activity
+WHERE datname = pg_catalog.current_database()
+  AND usename = 'logstream_runtime'
+`);
+        expect(connections.rows).toEqual([{ count: 0 }]);
+      } finally {
+        if (blockerHeld) {
+          await owner.query("SELECT pg_catalog.pg_advisory_unlock($1, $2)", [
+            coordinatorLockNamespace,
+            defaultBlockerLockId,
+          ]);
+        }
+        if (shutdown !== undefined) {
+          await Promise.allSettled([shutdown]);
+        } else {
+          if (service !== undefined) {
+            await service.stop();
+          }
+          await pool.end();
+        }
+        if (blockerInstalled) {
+          await removeDefaultCleanupBlocker(owner);
+        }
+        await Promise.all([owner.end(), observer.end()]);
+      }
     });
 
     it("keeps runtime privileges narrow while allowing the repository to maintain data", async () => {
