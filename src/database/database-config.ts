@@ -7,6 +7,7 @@ const DEFAULT_CONNECTION_TIMEOUT_MS = 2_000;
 const DEFAULT_STARTUP_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRY_DELAY_MS = 500;
 const DEFAULT_RETENTION_DAYS = 30;
+const DEFAULT_RETENTION_INTERVAL_MINUTES = 60;
 
 export interface DatabaseConfig {
   readonly connectionString: string;
@@ -16,6 +17,10 @@ export interface DatabaseConfig {
   readonly startupTimeoutMs: number;
   readonly retryDelayMs: number;
   readonly retentionDays: number;
+}
+
+export interface LoadedDatabaseConfig extends DatabaseConfig {
+  readonly retentionIntervalMs: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -69,7 +74,7 @@ function parseBoundedInteger(
   return parsed;
 }
 
-export function loadDatabaseConfig(environment: unknown): DatabaseConfig {
+export function loadDatabaseConfig(environment: unknown): LoadedDatabaseConfig {
   if (!isRecord(environment)) {
     throw new Error("Database environment must be an object.");
   }
@@ -90,6 +95,13 @@ export function loadDatabaseConfig(environment: unknown): DatabaseConfig {
   if (retryDelayMs > startupTimeoutMs) {
     throw new Error("DB_RETRY_DELAY_MS must not exceed DB_STARTUP_TIMEOUT_MS.");
   }
+
+  const retentionIntervalMinutes = parseBoundedInteger(
+    environment["RETENTION_INTERVAL_MINUTES"],
+    "RETENTION_INTERVAL_MINUTES",
+    DEFAULT_RETENTION_INTERVAL_MINUTES,
+    1_440,
+  );
 
   return {
     connectionString: parseDatabaseUrl(
@@ -122,5 +134,6 @@ export function loadDatabaseConfig(environment: unknown): DatabaseConfig {
       DEFAULT_RETENTION_DAYS,
       3_650,
     ),
+    retentionIntervalMs: retentionIntervalMinutes * 60_000,
   };
 }
