@@ -22,7 +22,7 @@ Pool alternatives are one small shared pool, separate workload pools, and PgBoun
 
 ## Accepted decision
 
-**ACCEPTED — 2026-08-08:** use typed-array `UNNEST` as the initial bulk method. Internally compare chunk sizes such as 500, 1,000, and 5,000; these are not public batch limits. Multiple chunks for one accepted request execute in one transaction.
+**ACCEPTED — 2026-08-08; UPDATED — 2026-08-13:** use typed-array `UNNEST` as the bulk method. The current repository executes exactly one insert statement for all accepted rows in a public request, so PostgreSQL's implicit transaction provides the required atomic commit. If a future implementation splits one request across multiple statements, all statements must again use one explicit transaction. Internal chunk sizes are never public batch limits.
 
 Use one shared `pg` pool with accepted starting maximum 4, then measure 2/4/8. Migrations acquire a client before traffic; retention shares the pool and skips work when its advisory lock is unavailable. Evaluate `COPY` only if durable `UNNEST` evidence misses the target or shows excessive CPU/memory.
 
@@ -30,7 +30,7 @@ Use one shared `pg` pool with accepted starting maximum 4, then measure 2/4/8. M
 
 ### Positive
 
-- Few round trips and explicit commit semantics.
+- One database round trip and PostgreSQL commit semantics.
 - IDs/normalized values can be prepared before insertion.
 - Small pool limits database context switching.
 
@@ -55,4 +55,4 @@ Use one shared `pg` pool with accepted starting maximum 4, then measure 2/4/8. M
 
 ## Acceptance record
 
-The reviewer approved `UNNEST` as the initial method and a shared pool baseline of four connections on `2026-08-08`. Chunk size, pool-size comparisons, and any `COPY` change remain measurement-gated.
+The reviewer approved `UNNEST` as the initial method and a shared pool baseline of four connections on `2026-08-08`. On `2026-08-13`, an identical 25-row repository microbenchmark improved from 8,747.755 to 20,280.208 rows/s after redundant explicit `BEGIN`/`COMMIT` round trips were removed. A one-pass preallocated parameter builder then measured 21,570.673 rows/s. Every run reconciled all 2,500 measured rows. Cross-request write coalescing was tested and rejected because it reduced constrained HTTP throughput. Any future chunking, pool-size, or `COPY` change remains measurement-gated.

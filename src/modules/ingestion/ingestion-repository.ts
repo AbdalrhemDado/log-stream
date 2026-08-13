@@ -1,13 +1,8 @@
 import { translateDatabaseError } from "../../database/database-errors.js";
 import type { LogInsertionRecord } from "../../domain/log-entry.js";
 
-export interface IngestionDatabaseClient {
-  query(sql: string, parameters?: unknown[]): Promise<unknown>;
-  release(destroy?: boolean): void;
-}
-
 export interface IngestionDatabasePool {
-  connect(): Promise<IngestionDatabaseClient>;
+  query(sql: string, parameters?: unknown[]): Promise<unknown>;
 }
 
 export interface IngestionRepository {
@@ -48,33 +43,25 @@ function serializeJsonb(value: object): string {
 }
 
 function buildInsertParameters(records: readonly LogInsertionRecord[]): unknown[] {
-  return [
-    records.map((record) => record.timestamp),
-    records.map((record) => record.id),
-    records.map((record) => record.level),
-    records.map((record) => record.service),
-    records.map((record) => record.message),
-    records.map((record) => serializeJsonb(record.attributes)),
-    records.map((record) => serializeJsonb(record.attributesSearch)),
-  ];
-}
+  const timestamps = new Array<LogInsertionRecord["timestamp"]>(records.length);
+  const ids = new Array<LogInsertionRecord["id"]>(records.length);
+  const levels = new Array<LogInsertionRecord["level"]>(records.length);
+  const services = new Array<string>(records.length);
+  const messages = new Array<string>(records.length);
+  const attributes = new Array<string>(records.length);
+  const attributesSearch = new Array<string>(records.length);
 
-async function rollbackAfterFailure(client: IngestionDatabaseClient): Promise<boolean> {
-  try {
-    await client.query("ROLLBACK");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function releaseClient(client: IngestionDatabaseClient, destroy: boolean): void {
-  if (destroy) {
-    client.release(true);
-    return;
+  for (const [index, record] of records.entries()) {
+    timestamps[index] = record.timestamp;
+    ids[index] = record.id;
+    levels[index] = record.level;
+    services[index] = record.service;
+    messages[index] = record.message;
+    attributes[index] = serializeJsonb(record.attributes);
+    attributesSearch[index] = serializeJsonb(record.attributesSearch);
   }
 
-  client.release();
+  return [timestamps, ids, levels, services, messages, attributes, attributesSearch];
 }
 
 export function createIngestionRepository(pool: IngestionDatabasePool): IngestionRepository {
@@ -91,41 +78,13 @@ export function createIngestionRepository(pool: IngestionDatabasePool): Ingestio
         throw translateDatabaseError(error);
       }
 
-      let client: IngestionDatabaseClient;
       try {
-        client = await pool.connect();
+        // A single INSERT is already an atomic PostgreSQL transaction. The query promise
+        // resolves only after PostgreSQL has committed it, so explicit BEGIN/COMMIT
+        // commands would add two round trips without improving durability.
+        await pool.query(INSERT_LOGS_SQL, parameters);
       } catch (error: unknown) {
         throw translateDatabaseError(error);
-      }
-
-      let operationError: Error | undefined;
-      let transactionBegan = false;
-      let destroyClient = false;
-
-      try {
-        await client.query("BEGIN");
-        transactionBegan = true;
-        await client.query(INSERT_LOGS_SQL, parameters);
-        await client.query("COMMIT");
-      } catch (error: unknown) {
-        if (transactionBegan) {
-          // After COMMIT starts, rollback is best-effort cleanup, not proof that commit failed.
-          destroyClient = !(await rollbackAfterFailure(client));
-        } else {
-          // BEGIN failed, so the server-side session state cannot be trusted for reuse.
-          destroyClient = true;
-        }
-        operationError = translateDatabaseError(error);
-      }
-
-      try {
-        releaseClient(client, destroyClient);
-      } catch (error: unknown) {
-        operationError ??= translateDatabaseError(error);
-      }
-
-      if (operationError !== undefined) {
-        throw operationError;
       }
     },
   };

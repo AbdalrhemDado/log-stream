@@ -58,6 +58,33 @@ describe("buildApp", () => {
     expect(responseRequestId).not.toBe(hostileRequestId);
     expect(responseRequestId).toHaveLength(36);
   });
+
+  it("suppresses routine ingestion logs while retaining routine query logs", async () => {
+    const records: unknown[] = [];
+    const app = buildApp({
+      logger: {
+        level: "info",
+        stream: {
+          write: (message: string) => {
+            records.push(JSON.parse(message) as unknown);
+          },
+        },
+      },
+    });
+    apps.push(app);
+    app.post("/logs", () => ({ accepted: 1, rejected: [] }));
+    app.get("/logs", () => ({ logs: [], next_cursor: null }));
+
+    expect((await app.inject({ method: "POST", url: "/logs" })).statusCode).toBe(200);
+    expect(records).toEqual([]);
+
+    expect((await app.inject({ method: "GET", url: "/logs" })).statusCode).toBe(200);
+    expect(records).toHaveLength(2);
+    expect(records).toEqual([
+      expect.objectContaining({ msg: "incoming request" }),
+      expect.objectContaining({ msg: "request completed" }),
+    ]);
+  });
 });
 
 describe("loadConfig", () => {

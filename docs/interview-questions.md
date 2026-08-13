@@ -28,15 +28,15 @@ The contract validates entries independently. The service retains original index
 
 ### 6. When is an accepted log durable?
 
-Only after PostgreSQL `COMMIT` succeeds. The repository begins a transaction, executes one typed-array `UNNEST` insert, commits, and only then lets the route return. Client dispatch or a generated UUID is not counted as acceptance.
+Only after the one typed-array `UNNEST` insert completes. PostgreSQL runs a standalone statement in an implicit transaction, and `pg` resolves the query only after that transaction commits. Client dispatch or a generated UUID is not counted as acceptance.
 
 ### 7. Why use `UNNEST` instead of one INSERT per row?
 
 It reduces network round trips, SQL parsing, and transaction overhead while retaining parameterization. Alternatives include multi-value INSERT and `COPY`. `COPY` may be faster but complicates partial-batch orchestration, typing, transaction/error semantics, and the trainee-facing implementation; the retained path met the target under exact limits.
 
-### 8. What happens if COMMIT reports a connection failure?
+### 8. What happens if the connection fails while the insert is committing?
 
-The client may not know whether PostgreSQL committed. Rollback is only best-effort cleanup and cannot prove non-commit. The service returns a safe availability error rather than falsely retrying inside the repository and risking duplicates; the load generator classifies unresolved/indeterminate accounting separately.
+The client may not know whether PostgreSQL committed the implicit transaction. The service returns a safe availability error rather than retrying inside the repository and risking duplicates; the load generator classifies unresolved/indeterminate accounting separately.
 
 ### 9. Why reject timestamps more than five minutes in the future but accept old logs?
 

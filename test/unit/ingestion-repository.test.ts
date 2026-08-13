@@ -6,7 +6,6 @@ import { validateLogEntry } from "../../src/domain/log-entry-validator.js";
 import type { LogId, LogInsertionRecord } from "../../src/domain/log-entry.js";
 import {
   createIngestionRepository,
-  type IngestionDatabaseClient,
   type IngestionDatabasePool,
 } from "../../src/modules/ingestion/ingestion-repository.js";
 import { TransientServiceError } from "../../src/shared/app-error.js";
@@ -52,12 +51,9 @@ function databaseDouble(queryImplementation?: (sql: string) => Promise<unknown>)
       ? Promise.resolve({ rowCount: 0, rows: [] })
       : queryImplementation(sql);
   });
-  const release = vi.fn();
-  const client: IngestionDatabaseClient = { query, release };
-  const connect = vi.fn(() => Promise.resolve(client));
-  const pool: IngestionDatabasePool = { connect };
+  const pool: IngestionDatabasePool = { query };
 
-  return { pool, connect, query, release };
+  return { pool, query };
 }
 
 function querySqlCalls(query: ReturnType<typeof vi.fn>): string[] {
@@ -71,36 +67,25 @@ describe("ingestion repository", () => {
 
     await expect(repository.insert([])).resolves.toBeUndefined();
 
-    expect(database.connect).not.toHaveBeenCalled();
     expect(database.query).not.toHaveBeenCalled();
-    expect(database.release).not.toHaveBeenCalled();
   });
 
-  it("executes BEGIN, one parameterized UNNEST INSERT, and COMMIT before releasing", async () => {
-    const events: string[] = [];
+  it("executes one atomic parameterized UNNEST INSERT", async () => {
     const query = vi.fn((sql: string) => {
-      events.push(sql.trimStart().split(/\s/u, 1)[0] ?? "");
+      void sql;
       return Promise.resolve({ rowCount: 0, rows: [] });
     });
-    const release = vi.fn(() => {
-      events.push("RELEASE");
-    });
-    const pool: IngestionDatabasePool = {
-      connect: vi.fn(() => Promise.resolve({ query, release })),
-    };
+    const pool: IngestionDatabasePool = { query };
     const repository = createIngestionRepository(pool);
 
     await expect(
       repository.insert([insertionRecord("00000000-0000-4000-8000-000000000001")]),
     ).resolves.toBeUndefined();
 
-    expect(events).toEqual(["BEGIN", "INSERT", "COMMIT", "RELEASE"]);
-    expect(query).toHaveBeenCalledTimes(3);
-    const insertSql = String(query.mock.calls[1]?.[0]);
+    expect(query).toHaveBeenCalledOnce();
+    const insertSql = String(query.mock.calls[0]?.[0]);
     expect(insertSql.match(/\bUNNEST\b/gu)).toHaveLength(1);
     expect(insertSql).not.toContain("RETURNING");
-    expect(release).toHaveBeenCalledOnce();
-    expect(release).toHaveBeenCalledWith();
   });
 
   it("builds seven same-length parallel arrays in record and column order", async () => {
@@ -125,7 +110,7 @@ describe("ingestion repository", () => {
 
     await repository.insert(records);
 
-    const insertCall = database.query.mock.calls[1];
+    const insertCall = database.query.mock.calls[0];
     if (insertCall?.[1] === undefined) {
       throw new Error("Expected one parameterized INSERT call.");
     }
@@ -167,7 +152,7 @@ describe("ingestion repository", () => {
       }),
     ]);
 
-    const insertCall = database.query.mock.calls[1];
+    const insertCall = database.query.mock.calls[0];
     if (insertCall?.[1] === undefined) {
       throw new Error("Expected one parameterized INSERT call.");
     }
@@ -181,7 +166,7 @@ describe("ingestion repository", () => {
     expect(String((parameters[5] as string[])[0])).toContain(hostileValue);
   });
 
-  it("rolls back an insert failure, never commits, releases, and throws a safe error", async () => {
+  it("translates an insert failure without exposing database details", async () => {
     const database = databaseDouble((sql) => {
       if (sql.includes("INSERT INTO")) {
         return Promise.reject(
@@ -196,65 +181,14 @@ describe("ingestion repository", () => {
       repository.insert([insertionRecord("00000000-0000-4000-8000-000000000004")]),
     ).rejects.toBeInstanceOf(InternalDatabaseError);
 
-    expect(querySqlCalls(database.query).map((sql) => sql.trim().split(/\s/u, 1)[0])).toEqual([
-      "BEGIN",
-      "INSERT",
-      "ROLLBACK",
-    ]);
-    expect(database.query).not.toHaveBeenCalledWith("COMMIT");
-    expect(database.release).toHaveBeenCalledOnce();
-    expect(database.release).toHaveBeenCalledWith();
+    expect(querySqlCalls(database.query)).toHaveLength(1);
   });
 
-  it("translates a BEGIN failure and releases without rollback or false commit", async () => {
-    const database = databaseDouble(() =>
-      Promise.reject(Object.assign(new Error("database is down"), { code: "ECONNREFUSED" })),
-    );
-    const repository = createIngestionRepository(database.pool);
-
-    await expect(
-      repository.insert([insertionRecord("00000000-0000-4000-8000-000000000005")]),
-    ).rejects.toBeInstanceOf(TransientServiceError);
-
-    expect(querySqlCalls(database.query)).toEqual(["BEGIN"]);
-    expect(database.release).toHaveBeenCalledOnce();
-    expect(database.release).toHaveBeenCalledWith(true);
-  });
-
-  it("reports no success and attempts rollback when COMMIT fails", async () => {
-    const database = databaseDouble((sql) => {
-      if (sql === "COMMIT") {
-        return Promise.reject(
-          Object.assign(new Error("connection lost during commit"), { code: "08007" }),
-        );
-      }
-      return Promise.resolve({ rowCount: 0, rows: [] });
-    });
-    const repository = createIngestionRepository(database.pool);
-
-    await expect(
-      repository.insert([insertionRecord("00000000-0000-4000-8000-000000000006")]),
-    ).rejects.toBeInstanceOf(TransientServiceError);
-
-    expect(querySqlCalls(database.query).map((sql) => sql.trim().split(/\s/u, 1)[0])).toEqual([
-      "BEGIN",
-      "INSERT",
-      "COMMIT",
-      "ROLLBACK",
-    ]);
-    expect(database.release).toHaveBeenCalledOnce();
-    expect(database.release).toHaveBeenCalledWith();
-  });
-
-  it("does not let rollback failure leak or replace the translated insert failure", async () => {
+  it("does not leak the source error from a failed implicit transaction", async () => {
     const insertSecret = "insert SQL and credential secret";
-    const rollbackSecret = "rollback password secret";
     const database = databaseDouble((sql) => {
       if (sql.includes("INSERT INTO")) {
         return Promise.reject(Object.assign(new Error(insertSecret), { code: "23514" }));
-      }
-      if (sql === "ROLLBACK") {
-        return Promise.reject(new Error(rollbackSecret));
       }
       return Promise.resolve({ rowCount: 0, rows: [] });
     });
@@ -269,15 +203,12 @@ describe("ingestion repository", () => {
 
     expect(thrown).toBeInstanceOf(InternalDatabaseError);
     expect(String(thrown)).not.toContain(insertSecret);
-    expect(String(thrown)).not.toContain(rollbackSecret);
-    expect(database.release).toHaveBeenCalledOnce();
-    expect(database.release).toHaveBeenCalledWith(true);
   });
 
-  it("translates pool acquisition failure without exposing its source", async () => {
+  it("translates a pool query failure without exposing its source", async () => {
     const sourceSecret = "postgresql://runtime:secret@database/logstream";
     const pool: IngestionDatabasePool = {
-      connect: vi.fn(() =>
+      query: vi.fn(() =>
         Promise.reject(Object.assign(new Error(sourceSecret), { code: "ECONNREFUSED" })),
       ),
     };
@@ -303,7 +234,7 @@ describe("ingestion repository", () => {
 
     await repository.insert(records);
 
-    expect(database.query).toHaveBeenCalledTimes(3);
+    expect(database.query).toHaveBeenCalledOnce();
     expect(querySqlCalls(database.query).filter((sql) => sql.includes("INSERT INTO"))).toHaveLength(
       1,
     );

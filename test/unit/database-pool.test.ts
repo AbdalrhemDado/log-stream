@@ -1,9 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createDatabasePool,
   RuntimeDatabaseVerificationError,
   verifyRuntimeDatabase,
 } from "../../src/database/database-pool.js";
+import { loadDatabaseConfig } from "../../src/database/database-config.js";
+
+describe("createDatabasePool", () => {
+  it("configures connection and query timeouts independently", async () => {
+    const pool = createDatabasePool(
+      loadDatabaseConfig({
+        DB_CONNECTION_TIMEOUT_MS: "1500",
+        DB_QUERY_TIMEOUT_MS: "12000",
+      }),
+    );
+
+    try {
+      const options = pool.options as typeof pool.options & { readonly query_timeout: number };
+      expect(options.connectionTimeoutMillis).toBe(1_500);
+      expect(options.query_timeout).toBe(12_000);
+    } finally {
+      await pool.end();
+    }
+  });
+});
 
 function verifiedRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
