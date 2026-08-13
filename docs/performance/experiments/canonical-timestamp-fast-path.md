@@ -2,9 +2,12 @@
 
 ## Decision
 
-**Provisionally accepted, pending a clean-commit confirmation run.** A narrow fast path for the load generator's canonical millisecond UTC timestamps raised confirmed ingestion throughput above 15,000 logs/second without weakening the timestamp contract.
+**Accepted.** A narrow fast path for the load generator's canonical millisecond UTC timestamps raised confirmed ingestion throughput above 15,000 logs/second in two controlled runs without weakening the timestamp contract.
 
-First-run machine-readable evidence: [`../results/million-row-canonical-timestamp.json`](../results/million-row-canonical-timestamp.json).
+Machine-readable evidence:
+
+- [first run](../results/million-row-canonical-timestamp.json);
+- [clean-commit confirmation](../results/million-row-canonical-timestamp-confirmation.json).
 
 ## Controlled variable and hypothesis
 
@@ -60,8 +63,35 @@ Resource sampling is periodic and achieved 0.353 sample starts/second in the fir
 - PostgreSQL retained `fsync=on`, `synchronous_commit=on`, and `full_page_writes=on`.
 - Exact-project cleanup passed with no remaining container, network, or volume.
 
+## Clean-commit confirmation
+
+The same workload ran again from clean commit `966ce177a50d65624ef9548f7dac028ed07781a9`. Application code was unchanged from the first run; that commit added only the first report and experiment record.
+
+```powershell
+npm run loadgen -- `
+  --measured-rows 1000000 `
+  --warmup-rows 10000 `
+  --batch-size 250 `
+  --concurrency 4 `
+  --seed 20260812 `
+  --request-timeout-ms 10000 `
+  --run-kind baseline `
+  --output docs/performance/results/million-row-canonical-timestamp-confirmation.json
+```
+
+| Metric | Frozen baseline | First optimized run | Confirmation |
+|---|---:|---:|---:|
+| Confirmed throughput | 14,661.743 logs/s | 16,031.716 logs/s | **17,059.228 logs/s** |
+| Change from baseline | — | +9.34% | **+16.35%** |
+| Margin above 15,000 | -2.26% | +6.88% | **+13.73%** |
+| Ingestion p95 | 113.392 ms | 109.963 ms | **103.867 ms** |
+| Aggregation p95 | 181.599 ms | 191.264 ms | **194.790 ms** |
+| Freshness, dispatch to visibility | 175.415 ms | 103.551 ms | **96.912 ms** |
+
+The two optimized runs averaged 16,545.472 confirmed accepted logs/second, and the lower run still exceeded the requirement. The confirmation also reconciled 1,010,000 expected and observed rows with delta zero; completed all 4,000 ingestion requests successfully; completed all 59 aggregation samples with no missed ticks; retained exact resource controls and durable PostgreSQL settings; and removed every exact-project container, network, and volume.
+
 ## Interpretation
 
-The first run supports the hypothesis: timestamp validation and canonicalization sit on the per-row ingestion path, and the optimized representation is exactly the load generator's dominant timestamp shape. The general parser is still required for the public API contract, but canonical millisecond UTC input can safely avoid its extra transformations after an exact round-trip validation.
+Both runs support the hypothesis: timestamp validation and canonicalization sit on the per-row ingestion path, and the optimized representation is exactly the load generator's dominant timestamp shape. The general parser is still required for the public API contract, but canonical millisecond UTC input can safely avoid its extra transformations after an exact round-trip validation.
 
-The first run exceeds the throughput requirement by 6.88%, which is useful but not a large environmental margin. The implementation will be retained only if a second controlled run from a clean evidence commit confirms the result while preserving all correctness, latency, resource-control, durability, and cleanup gates.
+The implementation is retained because the independent confirmation improved the margin while preserving correctness, latency, resource-control, durability, and cleanup gates. This is evidence for this host and frozen workload, not a claim that all environments will reproduce the same absolute rate.
