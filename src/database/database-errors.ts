@@ -9,11 +9,16 @@ const TRANSIENT_DATABASE_CODES = new Set([
   "57P01", // admin_shutdown
   "57P02", // crash_shutdown
   "57P03", // cannot_connect_now
+  "EAI_AGAIN",
   "ECONNABORTED",
   "ECONNREFUSED",
   "ECONNRESET",
+  "EHOSTDOWN",
   "EHOSTUNREACH",
+  "ENETDOWN",
+  "ENETRESET",
   "ENETUNREACH",
+  "ENOTFOUND",
   "EPIPE",
   "ETIMEDOUT",
 ]);
