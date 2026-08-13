@@ -31,6 +31,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const app = Fastify({
     genReqId: () => randomUUID(),
     logController: new LogController({
+      disableRequestLogging: true,
       requestIdLogLabel: REQUEST_ID_LOG_LABEL,
     }),
     logger: options.logger ?? false,
