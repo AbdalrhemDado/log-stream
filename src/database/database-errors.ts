@@ -24,6 +24,8 @@ const TRANSIENT_CODELESS_DATABASE_MESSAGES = new Set([
   "Connection terminated",
   "Connection terminated unexpectedly",
   "Connection terminated due to connection timeout",
+  "timeout exceeded when trying to connect",
+  "timeout expired",
 ]);
 
 const INTERNAL_DATABASE_MESSAGE = "Database operation failed.";
