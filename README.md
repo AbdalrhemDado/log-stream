@@ -236,7 +236,7 @@ The core API has no authentication, authorization, TLS termination, request rate
 | `DATABASE_URL`               | Compose runtime-role URL | Runtime pool connection                                         |
 | `MIGRATION_DATABASE_URL`     |   Compose owner-role URL | Startup migrations only                                         |
 | `DB_POOL_MAX`                |                      `4` | Valid range 1–32                                                |
-| `DB_CONNECTION_TIMEOUT_MS`   |                  `10000` | Valid range 1–60,000; also bounds waiting for a pooled client   |
+| `DB_CONNECTION_TIMEOUT_MS`   |                   `2000` | Valid range 1–60,000; also bounds waiting for a pooled client   |
 | `DB_QUERY_TIMEOUT_MS`        |                  `10000` | Valid range 1–120,000; independent of connection establishment  |
 | `DB_STARTUP_TIMEOUT_MS`      |                  `30000` | Valid range 1–300,000                                           |
 | `DB_RETRY_DELAY_MS`          |                    `500` | Valid range 1–30,000 and no greater than startup timeout        |

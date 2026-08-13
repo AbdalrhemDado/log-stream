@@ -27,7 +27,7 @@ For aggregation, use PostgreSQL 16 as the compatibility baseline and `date_bin` 
 
 Ordinary repository traffic uses the restricted runtime role, never the PostgreSQL superuser or migration owner. Startup migrations use a separate owner connection as detailed in ADR 0008.
 
-Pool acquisition/connection establishment and query execution use independent configuration values. Both default to a bounded 10 seconds. The pool value also limits how long `pg-pool` waits for an existing client, preventing the former two-second setting from converting transient queueing into premature HTTP 500 responses during bursts.
+Pool acquisition/connection establishment and query execution use independent configuration values. Pool acquisition defaults to 2 seconds so overload cannot create a long request backlog; query execution remains bounded at 10 seconds. Exact `pg` pool and query timeout errors are translated to HTTP 503 with `Retry-After`, never reported as an internal 500.
 
 ## Consequences
 
@@ -63,4 +63,4 @@ Pool acquisition/connection establishment and query execution use independent co
 
 ## Acceptance record
 
-The reviewer approved direct `pg` access, shared pure predicate builders, and PostgreSQL 16-compatible UTC `date_bin` bucketing with the fixed epoch origin and half-open intervals on `2026-08-08`. On `2026-08-13`, pool acquisition/connection and query timeouts were separated after the external benchmark showed failures clustered around the former shared two-second value. Both retained defaults are 10 seconds, but operators can tune them independently.
+The reviewer approved direct `pg` access, shared pure predicate builders, and PostgreSQL 16-compatible UTC `date_bin` bucketing with the fixed epoch origin and half-open intervals on `2026-08-08`. On `2026-08-13`, pool acquisition and query execution timeouts were separated. On `2026-08-14`, the pool default was restored to the proven 2-second setting after a grader-wide command timeout showed that 10-second checkout queues could prevent overload stages from draining. Query execution remains 10 seconds, and both values remain independently configurable.

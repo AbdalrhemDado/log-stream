@@ -10,7 +10,7 @@ describe("loadDatabaseConfig", () => {
       migrationConnectionString:
         "postgresql://logstream_owner:local_owner_password@postgres:5432/logstream",
       maxConnections: 4,
-      connectionTimeoutMs: 10_000,
+      connectionTimeoutMs: 2_000,
       queryTimeoutMs: 10_000,
       startupTimeoutMs: 30_000,
       retryDelayMs: 500,

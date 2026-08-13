@@ -3,7 +3,7 @@ const DEFAULT_DATABASE_URL =
 const DEFAULT_MIGRATION_DATABASE_URL =
   "postgresql://logstream_owner:local_owner_password@postgres:5432/logstream";
 const DEFAULT_POOL_MAX = 4;
-const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
+const DEFAULT_CONNECTION_TIMEOUT_MS = 2_000;
 const DEFAULT_QUERY_TIMEOUT_MS = 10_000;
 const DEFAULT_STARTUP_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRY_DELAY_MS = 500;
