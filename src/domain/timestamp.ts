@@ -2,6 +2,7 @@ import type { CanonicalUtcTimestamp } from "./log-entry.js";
 
 const TIMESTAMP_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+const CANONICAL_MILLISECOND_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.(\d{3})Z$/;
 
 export type TimestampParseFailureKind = "grammar" | "components";
 
@@ -58,6 +59,25 @@ function compareFractions(left: string, right: string): -1 | 0 | 1 {
 }
 
 export function parseCanonicalTimestamp(value: string): TimestampParseResult {
+  const canonicalMilliseconds = CANONICAL_MILLISECOND_PATTERN.exec(value);
+
+  if (canonicalMilliseconds !== null) {
+    const epochMs = Date.parse(value);
+
+    if (!Number.isFinite(epochMs) || new Date(epochMs).toISOString() !== value) {
+      return { ok: false, kind: "components" };
+    }
+
+    return {
+      ok: true,
+      value: {
+        canonical: value as CanonicalUtcTimestamp,
+        wholeSecondMs: Math.floor(epochMs / 1_000) * 1_000,
+        fraction: canonicalMilliseconds[1] ?? "",
+      },
+    };
+  }
+
   const match = TIMESTAMP_PATTERN.exec(value);
 
   if (match === null) {
