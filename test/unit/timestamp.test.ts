@@ -92,6 +92,30 @@ describe("parseCanonicalTimestamp", () => {
     expect(parseSuccess("2099-01-15T12:00:00Z").canonical).toBe("2099-01-15T12:00:00.000Z");
     expect(nowSpy).not.toHaveBeenCalled();
   });
+
+  it("preserves canonical millisecond input and its comparison components", () => {
+    const parsed = parseSuccess("2026-01-15T12:00:00.123Z");
+
+    expect(parsed).toEqual({
+      canonical: "2026-01-15T12:00:00.123Z",
+      wholeSecondMs: Date.UTC(2026, 0, 15, 12, 0, 0),
+      fraction: "123",
+    });
+  });
+
+  it("rejects invalid canonical-shaped millisecond input as invalid components", () => {
+    expect(parseCanonicalTimestamp("2026-02-29T12:00:00.123Z")).toEqual({
+      ok: false,
+      kind: "components",
+    });
+  });
+
+  it("keeps the whole-second boundary correct before the Unix epoch", () => {
+    const parsed = parseSuccess("1969-12-31T23:59:59.123Z");
+
+    expect(parsed.wholeSecondMs).toBe(-1_000);
+    expect(parsed.fraction).toBe("123");
+  });
 });
 
 describe("timestamp comparison", () => {
