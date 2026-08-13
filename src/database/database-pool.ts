@@ -44,7 +44,7 @@ export function createDatabasePool(config: DatabaseConfig): DatabasePool {
     connectionString: config.connectionString,
     connectionTimeoutMillis: config.connectionTimeoutMs,
     max: config.maxConnections,
-    query_timeout: config.connectionTimeoutMs,
+    query_timeout: config.queryTimeoutMs,
   });
 }
 

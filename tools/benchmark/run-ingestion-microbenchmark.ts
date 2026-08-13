@@ -274,6 +274,7 @@ async function createDatabaseContext(port: number, referenceTime: Date): Promise
     migrationConnectionString: ownerConnectionString,
     maxConnections: POOL_MAXIMUM,
     connectionTimeoutMs: 2_000,
+    queryTimeoutMs: 10_000,
     startupTimeoutMs: 30_000,
     retryDelayMs: 100,
     retentionDays: 1,

@@ -1,5 +1,7 @@
 # Final Performance Validation Report
 
+> **Historical evidence notice (2026-08-13):** this report describes the earlier 250/500-row source state captured by its linked JSON artifacts. The current working tree has a separate successful one-million-row, 50-row/request confirmation; the company benchmark still requires rerunning. See [External Benchmark Remediation](external-benchmark-remediation.md).
+
 ## Outcome
 
 The retained implementation satisfies the measured company performance targets under the required Docker resource controls. Two independent one-million-row optimized runs reached **16,031.716** and **17,059.228 confirmed accepted logs/second**. The lower result exceeds the 15,000 logs/second threshold, while concurrent aggregation p95 remained below one second, visibility freshness remained below 20 seconds, and PostgreSQL row reconciliation was exact.

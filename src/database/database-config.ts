@@ -3,7 +3,8 @@ const DEFAULT_DATABASE_URL =
 const DEFAULT_MIGRATION_DATABASE_URL =
   "postgresql://logstream_owner:local_owner_password@postgres:5432/logstream";
 const DEFAULT_POOL_MAX = 4;
-const DEFAULT_CONNECTION_TIMEOUT_MS = 2_000;
+const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
+const DEFAULT_QUERY_TIMEOUT_MS = 10_000;
 const DEFAULT_STARTUP_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRY_DELAY_MS = 500;
 const DEFAULT_RETENTION_DAYS = 30;
@@ -14,6 +15,7 @@ export interface DatabaseConfig {
   readonly migrationConnectionString: string;
   readonly maxConnections: number;
   readonly connectionTimeoutMs: number;
+  readonly queryTimeoutMs: number;
   readonly startupTimeoutMs: number;
   readonly retryDelayMs: number;
   readonly retentionDays: number;
@@ -125,6 +127,12 @@ export function loadDatabaseConfig(environment: unknown): LoadedDatabaseConfig {
       "DB_CONNECTION_TIMEOUT_MS",
       DEFAULT_CONNECTION_TIMEOUT_MS,
       60_000,
+    ),
+    queryTimeoutMs: parseBoundedInteger(
+      environment["DB_QUERY_TIMEOUT_MS"],
+      "DB_QUERY_TIMEOUT_MS",
+      DEFAULT_QUERY_TIMEOUT_MS,
+      120_000,
     ),
     startupTimeoutMs,
     retryDelayMs,

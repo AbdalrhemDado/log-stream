@@ -2,7 +2,7 @@
 
 ## Decision
 
-**Rejected and reverted.** Fastify's automatic successful-request logging remains enabled because disabling it did not improve confirmed ingestion throughput and worsened measured latency.
+**Historical decision for the 250-row workload: rejected and reverted.** A later 25-row/request experiment accepted suppression only for routine successful `POST /logs` access logs; see [`../external-benchmark-remediation.md`](../external-benchmark-remediation.md). The original global experiment and its conclusion for 250-row batches remain valid.
 
 Machine-readable evidence: [`../results/million-row-no-request-logging.json`](../results/million-row-no-request-logging.json).
 

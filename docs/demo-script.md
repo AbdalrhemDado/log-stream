@@ -40,12 +40,12 @@ $demoBody | curl.exe --silent --show-error --request POST http://localhost:8080/
 
 Say:
 
-> The valid row commits and the invalid row is reported at original index one. The service normalizes the timestamp, generates a UUID, preserves typed attributes, creates normalized string attributes for search, and inserts accepted rows with typed-array `UNNEST` inside one explicit transaction. HTTP 200 is returned only after COMMIT succeeds. An all-invalid batch is HTTP 400 and never calls the repository.
+> The valid row commits and the invalid row is reported at original index one. The service normalizes the timestamp, generates a UUID, preserves typed attributes, creates normalized string attributes for search, and inserts accepted rows with one typed-array `UNNEST` statement. PostgreSQL treats that statement as an implicit transaction, and HTTP 200 is returned only after it commits. An all-invalid batch is HTTP 400 and never calls the repository.
 
 Show the short path if time permits:
 
 - validation/orchestration: [`src/modules/ingestion/ingestion-service.ts`](../src/modules/ingestion/ingestion-service.ts);
-- transaction and bulk SQL: [`src/modules/ingestion/ingestion-repository.ts`](../src/modules/ingestion/ingestion-repository.ts).
+- durable implicit transaction and bulk SQL: [`src/modules/ingestion/ingestion-repository.ts`](../src/modules/ingestion/ingestion-repository.ts).
 
 ## 1:35–2:30 — Query, safe SQL, and cursor pagination
 

@@ -47,7 +47,7 @@ Teaching points:
 
 No route builds SQL. This keeps HTTP semantics visible and database behavior testable without a socket.
 
-## 3. Ingestion: HTTP body to COMMIT
+## 3. Ingestion: HTTP body to durable commit
 
 ```mermaid
 sequenceDiagram
@@ -65,9 +65,8 @@ sequenceDiagram
     end
     S->>S: UUID + normalized search attributes
     S->>R: accepted records only
-    R->>D: BEGIN
     R->>D: INSERT ... FROM UNNEST(typed arrays)
-    R->>D: COMMIT
+    Note over R,D: PostgreSQL implicit transaction
     D-->>R: committed
     R-->>S: success
     S-->>F: accepted count + rejected original indexes
@@ -80,7 +79,7 @@ Successful parsing produces branded [`CanonicalUtcTimestamp`](../src/domain/log-
 
 [`attribute-normalizer.ts`](../src/domain/attribute-normalizer.ts) creates a null-prototype search object. Strings remain strings, finite numbers use JSON serialization (`-0` becomes `0`), and booleans become lowercase text. The original typed object remains separate for API responses.
 
-[`ingestion-repository.ts`](../src/modules/ingestion/ingestion-repository.ts) maps each column into a typed PostgreSQL array and executes `INSERT ... SELECT FROM UNNEST(...)` inside an explicit transaction. JSONB values are serialized before pool acquisition so a serialization failure does not consume a connection. On failure, rollback and client destruction are defensive cleanup; a connection loss during COMMIT can remain indeterminate.
+[`ingestion-repository.ts`](../src/modules/ingestion/ingestion-repository.ts) maps each column into a typed PostgreSQL array and executes one `INSERT ... SELECT FROM UNNEST(...)`. PostgreSQL wraps every standalone statement in an implicit transaction, so the `pg` promise resolves only after commit. Explicit `BEGIN` and `COMMIT` would add two protocol round trips without making this single statement more atomic or durable. JSONB values are serialized before the pool query begins. A connection failure can still leave the client uncertain about the final commit outcome, so the repository never retries automatically.
 
 Alternatives:
 

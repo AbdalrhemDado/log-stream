@@ -19,13 +19,15 @@ PostgreSQL must remain the read/write source of truth. The service needs bulk in
 
 ## Accepted decision
 
-**ACCEPTED — 2026-08-08:** use `pg`, feature repositories, explicit transactions, and small pure SQL builders returning `{ text, values }`. Parameterize every user or cursor-derived value. Select bucket, group column, and other identifiers only through exhaustive hard-coded maps.
+**ACCEPTED — 2026-08-08:** use `pg`, feature repositories, explicit transactions where multiple statements require atomicity, and small pure SQL builders returning `{ text, values }`. A standalone ingestion statement may rely on PostgreSQL's implicit transaction. Parameterize every user or cursor-derived value. Select bucket, group column, and other identifiers only through exhaustive hard-coded maps.
 
 Attribute filters construct a safe one-key JSON object as a bound JSONB parameter. An empty ingestion attribute key remains valid and preserved, while bare `attr.` remains a separately invalid recognized query name because it has no `<key>` segment. Message substring patterns escape wildcard characters for literal semantics and remain bound values.
 
 For aggregation, use PostgreSQL 16 as the compatibility baseline and `date_bin` with the fixed UTC epoch origin `TIMESTAMPTZ '1970-01-01 00:00:00+00'`. Map only `1m`, `5m`, `1h`, and `1d` to trusted interval expressions. Buckets are half-open `[start, start + bucket)`, the session timezone is UTC, and response timestamps serialize in UTC.
 
 Ordinary repository traffic uses the restricted runtime role, never the PostgreSQL superuser or migration owner. Startup migrations use a separate owner connection as detailed in ADR 0008.
+
+Pool acquisition/connection establishment and query execution use independent configuration values. Both default to a bounded 10 seconds. The pool value also limits how long `pg-pool` waits for an existing client, preventing the former two-second setting from converting transient queueing into premature HTTP 500 responses during bursts.
 
 ## Consequences
 
@@ -61,4 +63,4 @@ Ordinary repository traffic uses the restricted runtime role, never the PostgreS
 
 ## Acceptance record
 
-The reviewer approved direct `pg` access, shared pure predicate builders, and PostgreSQL 16-compatible UTC `date_bin` bucketing with the fixed epoch origin and half-open intervals on `2026-08-08`.
+The reviewer approved direct `pg` access, shared pure predicate builders, and PostgreSQL 16-compatible UTC `date_bin` bucketing with the fixed epoch origin and half-open intervals on `2026-08-08`. On `2026-08-13`, pool acquisition/connection and query timeouts were separated after the external benchmark showed failures clustered around the former shared two-second value. Both retained defaults are 10 seconds, but operators can tune them independently.

@@ -52,7 +52,7 @@ The code is organized around routes, services, repositories, domain validation, 
 
 ### Request and data flow
 
-- Ingestion validates every element independently, generates UUID v4 identifiers for accepted rows, builds a normalized attribute-search document, and inserts the accepted portion of the batch in one transaction with typed arrays and PostgreSQL `UNNEST`. The HTTP response is sent only after commit.
+- Ingestion validates every element independently, generates UUID v4 identifiers for accepted rows, builds a normalized attribute-search document, and inserts the accepted portion with one typed-array PostgreSQL `UNNEST` statement. PostgreSQL executes that statement as an implicit transaction, and the HTTP response is sent only after it commits.
 - Query builds one parameterized predicate, orders by `timestamp DESC, id DESC`, requests `limit + 1` rows, and returns an opaque cursor when another page exists.
 - Aggregation uses the same filters, PostgreSQL `date_bin` with a fixed Unix-epoch origin, and an allowlisted bucket and grouping expression. Results are ordered by bucket and group.
 - Retention runs independently on an interval. An advisory lock prevents duplicate coordinators; expired whole partitions are dropped one at a time and expired default-partition rows are deleted in bounded, skip-locked batches.
@@ -236,7 +236,8 @@ The core API has no authentication, authorization, TLS termination, request rate
 | `DATABASE_URL`               | Compose runtime-role URL | Runtime pool connection                                         |
 | `MIGRATION_DATABASE_URL`     |   Compose owner-role URL | Startup migrations only                                         |
 | `DB_POOL_MAX`                |                      `4` | Valid range 1–32                                                |
-| `DB_CONNECTION_TIMEOUT_MS`   |                   `2000` | Valid range 1–60,000                                            |
+| `DB_CONNECTION_TIMEOUT_MS`   |                  `10000` | Valid range 1–60,000; also bounds waiting for a pooled client   |
+| `DB_QUERY_TIMEOUT_MS`        |                  `10000` | Valid range 1–120,000; independent of connection establishment  |
 | `DB_STARTUP_TIMEOUT_MS`      |                  `30000` | Valid range 1–300,000                                           |
 | `DB_RETRY_DELAY_MS`          |                    `500` | Valid range 1–30,000 and no greater than startup timeout        |
 | `RETENTION_DAYS`             |                     `30` | Valid range 1–3,650                                             |
@@ -265,9 +266,9 @@ GitHub Actions repeats the quality job and Docker-backed system job on pushes, p
 
 ## Performance result
 
-Under the exact Compose limits, the retained implementation sustained **16,031.716** and **17,059.228 confirmed accepted logs/second** in two independent one-million-row runs. The lower result exceeded the 15,000 logs/second target. The confirmation run measured ingestion request p50/p95/p99 of **66.934 / 103.867 / 187.095 ms**, concurrent aggregation p50/p95/p99 of **91.669 / 194.790 / 197.878 ms**, all 59 scheduled one-per-second aggregation calls successful with no missed ticks, public-API freshness of **96.912 ms**, and exact `1,010,000 / 1,010,000` row reconciliation.
+The current small-batch implementation sustained **15,201.236 confirmed accepted logs/second** across 1,000,000 measured rows with 50-row requests under the exact Compose limits. All 20,000 measured POSTs returned HTTP 200. Ingestion request p50/p95/p99 was **7.021 / 54.291 / 84.779 ms**; concurrent aggregation p50/p95/p99 was **53.072 / 146.079 / 160.174 ms**, with all 66 scheduled one-per-second calls successful and zero missed ticks. Public-API freshness was **46.814 ms**, and PostgreSQL reconciled exactly `1,010,000 / 1,010,000` rows.
 
-These are controlled results from one host and deterministic workload, not a universal capacity promise. See the [final performance report](docs/performance/final-report.md) for methodology, environment, resource samples, rejected experiments, reproducibility commands, and machine-readable evidence.
+This controlled local result verifies the required target for its recorded host, workload, and source state; it does not predict the company grader's score. The supplied external benchmark exposed the small-request bottleneck and must be rerun before claiming an improved external result. See the [external benchmark remediation report](docs/performance/external-benchmark-remediation.md) and its [machine-readable million-row evidence](docs/performance/results/million-row-batch-50-remediation.json). The [historical final performance report](docs/performance/final-report.md) retains earlier 250/500-row evidence.
 
 ## Optional-feature inventory and known limits
 
