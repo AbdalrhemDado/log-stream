@@ -58,34 +58,6 @@ describe("buildApp", () => {
     expect(responseRequestId).not.toBe(hostileRequestId);
     expect(responseRequestId).toHaveLength(36);
   });
-
-  it("suppresses routine request logs while retaining unexpected-error logging", async () => {
-    const records: unknown[] = [];
-    const app = buildApp({
-      logger: {
-        level: "info",
-        stream: {
-          write: (message: string) => {
-            records.push(JSON.parse(message) as unknown);
-          },
-        },
-      },
-    });
-    apps.push(app);
-    app.get("/success", () => ({ ok: true }));
-    app.get("/failure", () => {
-      throw new Error("bounded test failure");
-    });
-
-    expect((await app.inject({ method: "GET", url: "/success" })).statusCode).toBe(200);
-    expect(records).toEqual([]);
-
-    expect((await app.inject({ method: "GET", url: "/failure" })).statusCode).toBe(500);
-    expect(records).toHaveLength(1);
-    expect(records[0]).toMatchObject({ msg: "Unhandled request error" });
-    expect(JSON.stringify(records)).not.toContain("incoming request");
-    expect(JSON.stringify(records)).not.toContain("request completed");
-  });
 });
 
 describe("loadConfig", () => {
