@@ -19,6 +19,9 @@ const TRANSIENT_DATABASE_CODES = new Set([
 ]);
 
 const TRANSIENT_CODELESS_DATABASE_MESSAGES = new Set([
+  "Client has encountered a connection error and is not queryable",
+  "Client was closed and is not queryable",
+  "Connection terminated",
   "Connection terminated unexpectedly",
   "Connection terminated due to connection timeout",
 ]);

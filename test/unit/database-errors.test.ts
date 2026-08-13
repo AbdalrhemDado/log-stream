@@ -31,6 +31,9 @@ describe("translateDatabaseError", () => {
   });
 
   it.each([
+    "Client has encountered a connection error and is not queryable",
+    "Client was closed and is not queryable",
+    "Connection terminated",
     "Connection terminated unexpectedly",
     "Connection terminated due to connection timeout",
   ])("maps the exact code-less driver message %s to TransientServiceError", (message) => {
@@ -41,6 +44,9 @@ describe("translateDatabaseError", () => {
   });
 
   it.each([
+    "client has encountered a connection error and is not queryable",
+    "Client was closed and is not queryable.",
+    "Connection terminated ",
     "connection terminated unexpectedly",
     "Connection terminated Unexpectedly",
     "Connection terminated unexpectedly ",
