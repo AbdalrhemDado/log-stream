@@ -17,6 +17,7 @@ export async function runLoadGenerator(arguments_: readonly string[]): Promise<n
     process.stdout.write(
       [
         `Load generator outcome: ${report.outcome}`,
+        `Run kind: ${options.runKind}`,
         `Confirmed measured accepted rows: ${String(measured?.counters.confirmedAcceptedRows ?? 0)}`,
         `Measured accepted rows/second: ${String(measured?.confirmedAcceptedRowsPerSecond ?? "unavailable")}`,
         `Aggregation successful samples: ${String(aggregation?.requestLatencySuccessful.sampleCount ?? 0)}`,

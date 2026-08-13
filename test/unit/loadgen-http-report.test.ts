@@ -17,7 +17,7 @@ const temporaryDirectories: string[] = [];
 
 function report(): LoadGeneratorReport {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     outcome: "failed",
     failureReasons: ["bounded synthetic failure"],
     generatedAtUtc: "2026-08-12T12:00:00.000Z",
@@ -33,6 +33,8 @@ function report(): LoadGeneratorReport {
     aggregation: null,
     freshness: null,
     reconciliation: null,
+    diagnostics: null,
+    targetAssessment: [],
     cleanup: {
       attempted: true,
       composeDownSucceeded: true,
@@ -181,6 +183,6 @@ describe("atomic and redacted report publication", () => {
   it("refuses to serialize credentials or database URLs", () => {
     const unsafe = { ...report(), failureReasons: ["postgresql://user:secret@host/database"] };
     expect(() => serializeReport(unsafe)).toThrow("potentially sensitive");
-    expect(serializeReport(report())).toMatch(/"schemaVersion": 1/u);
+    expect(serializeReport(report())).toMatch(/"schemaVersion": 2/u);
   });
 });

@@ -16,6 +16,7 @@ const DEFAULTS = {
   outputPath: "docs/performance/results/load-generator-smoke.json",
   requestTimeoutMs: 5_000,
   baseUrl: "http://127.0.0.1:8080",
+  runKind: "smoke",
 } as const;
 
 const MAX_REQUESTS = 250_000;
@@ -28,7 +29,7 @@ const NUMERIC_OPTIONS = {
   "--request-timeout-ms": { key: "requestTimeoutMs", minimum: 100, maximum: 120_000 },
 } as const;
 
-const STRING_OPTIONS = new Set(["--output", "--reference-time", "--base-url"]);
+const STRING_OPTIONS = new Set(["--output", "--reference-time", "--base-url", "--run-kind"]);
 const COMPOSE_PROJECT_PATTERN = /^logstream-loadgen-[a-z0-9-]{1,48}$/u;
 const RUN_ID_PATTERN = /^lg-v1-[a-f0-9]{8}-[0-9]{8}t[0-9]{9}z$/u;
 
@@ -123,6 +124,13 @@ function validateOutputPath(value: string): string {
   return resolve(value);
 }
 
+function parseRunKind(value: string): LoadGeneratorOptions["runKind"] {
+  if (value !== "smoke" && value !== "baseline") {
+    throw new LoadGeneratorConfigurationError("--run-kind must be smoke or baseline.");
+  }
+  return value;
+}
+
 export function parseLoadGeneratorOptions(arguments_: readonly string[]): LoadGeneratorOptions {
   const raw = new Map<string, string>();
   const supported = new Set([...Object.keys(NUMERIC_OPTIONS), ...STRING_OPTIONS]);
@@ -166,6 +174,7 @@ export function parseLoadGeneratorOptions(arguments_: readonly string[]): LoadGe
     requestTimeoutMs: numericValues["requestTimeoutMs"] ?? DEFAULTS.requestTimeoutMs,
     ...(reference === undefined ? {} : { referenceTimeUtc: parseReferenceTime(reference) }),
     baseUrl: parseBaseUrl(raw.get("--base-url") ?? DEFAULTS.baseUrl),
+    runKind: parseRunKind(raw.get("--run-kind") ?? DEFAULTS.runKind),
   };
 }
 
@@ -237,6 +246,8 @@ export function resolveRunConfiguration(
     referenceTimeUtc,
     "--base-url",
     options.baseUrl,
+    "--run-kind",
+    options.runKind,
   ] as const;
 
   return {

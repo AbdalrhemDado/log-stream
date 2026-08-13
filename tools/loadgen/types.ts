@@ -1,7 +1,8 @@
 export const LOAD_GENERATOR_VERSION = "1.0.0";
-export const REPORT_SCHEMA_VERSION = 1;
+export const REPORT_SCHEMA_VERSION = 2;
 
 export type WorkloadPhase = "warmup" | "measured";
+export type LoadGeneratorRunKind = "smoke" | "baseline";
 
 export interface LoadGeneratorOptions {
   readonly measuredRows: number;
@@ -13,6 +14,7 @@ export interface LoadGeneratorOptions {
   readonly requestTimeoutMs: number;
   readonly referenceTimeUtc?: string;
   readonly baseUrl: string;
+  readonly runKind: LoadGeneratorRunKind;
 }
 
 export interface ResolvedRunConfiguration extends LoadGeneratorOptions {
@@ -174,6 +176,21 @@ export interface RowReconciliation {
   readonly passed: boolean;
 }
 
+export interface BenchmarkTargetAssessment {
+  readonly requirement: string;
+  readonly status: "verified" | "not-verified" | "not-evaluated";
+  readonly evidence: string;
+}
+
+export interface BenchmarkDiagnostics {
+  readonly applicationEnvironment: Readonly<Record<string, string>>;
+  readonly containerImages: Readonly<Record<string, string>>;
+  readonly postgresSettings: Readonly<Record<string, string>>;
+  readonly database: Readonly<Record<string, number>>;
+  readonly queryPlans: Readonly<Record<string, unknown>>;
+  readonly planEvidenceBoundary: string;
+}
+
 export interface CommandResult {
   readonly exitCode: number;
   readonly stdout: string;
@@ -196,7 +213,7 @@ export interface MonotonicClock {
 export type Sleep = (durationMs: number, signal?: AbortSignal) => Promise<void>;
 
 export interface LoadGeneratorReport {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly outcome: "passed" | "failed";
   readonly failureReasons: readonly string[];
   readonly generatedAtUtc: string;
@@ -212,6 +229,8 @@ export interface LoadGeneratorReport {
   readonly aggregation: AggregationResult | null;
   readonly freshness: FreshnessResult | null;
   readonly reconciliation: RowReconciliation | null;
+  readonly diagnostics: BenchmarkDiagnostics | null;
+  readonly targetAssessment: readonly BenchmarkTargetAssessment[];
   readonly cleanup: CleanupVerification;
   readonly limitations: readonly string[];
   readonly unverifiedRequirements: readonly string[];
