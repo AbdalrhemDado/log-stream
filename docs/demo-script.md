@@ -35,7 +35,7 @@ Create a current event timestamp and submit one valid and one invalid entry:
 ```powershell
 $demoNow = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
 $demoBody = "{`"logs`":[{`"timestamp`":`"$demoNow`",`"level`":`"info`",`"service`":`"demo-checkout`",`"message`":`"payment accepted`",`"attributes`":{`"demo_id`":`"five-minute-demo`",`"attempt`":1,`"cached`":false}},{`"timestamp`":`"invalid`",`"level`":`"info`",`"service`":`"demo-checkout`",`"message`":`"rejected item`"}]}"
-curl.exe --silent --show-error --request POST http://localhost:8080/logs --header "content-type: application/json" --data-raw $demoBody
+$demoBody | curl.exe --silent --show-error --request POST http://localhost:8080/logs --header "content-type: application/json" --data-binary '@-'
 ```
 
 Say:
