@@ -205,7 +205,8 @@ describe("evidence-derived target assessment", () => {
       resourceControlsVerified: true,
     });
     expect(result).toHaveLength(9);
-    expect(result.every((item) => item.status === "verified")).toBe(true);
+    expect(result.filter((item) => item.status === "verified")).toHaveLength(8);
+    expect(result.find((item) => item.requirement === "PERF-007")?.status).toBe("not-verified");
   });
 
   it("does not evaluate final targets for smoke runs", () => {

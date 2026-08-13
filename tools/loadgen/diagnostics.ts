@@ -19,7 +19,7 @@ const EXPECTED_APPLICATION_ENVIRONMENT = {
 const POSTGRES_SETTINGS_SQL = String.raw`
 SELECT json_object_agg(name, setting ORDER BY name)
 FROM pg_settings
-WHERE name IN (
+WHERE lower(name) IN (
   'effective_cache_size',
   'effective_io_concurrency',
   'fsync',

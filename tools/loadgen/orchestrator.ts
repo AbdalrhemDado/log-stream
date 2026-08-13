@@ -21,6 +21,7 @@ import { defaultSleep, systemClock, type HttpDependencies } from "./http.js";
 import { runIngestionPhase } from "./ingestion.js";
 import { countRunRows, reconcileRows } from "./reconciliation.js";
 import { publishReportAtomically } from "./report.js";
+import { ratePerSecond, summarizeSamples } from "./statistics.js";
 import {
   LOAD_GENERATOR_VERSION,
   REPORT_SCHEMA_VERSION,
@@ -115,9 +116,21 @@ function safeFailure(error: unknown): string {
 function resourceSummary(samples: readonly ResourceSample[]): Readonly<Record<string, unknown>> {
   const maximum = (selector: (sample: ResourceSample) => number): number | null =>
     samples.length === 0 ? null : Math.max(...samples.map(selector));
+  const intervals = samples
+    .slice(1)
+    .map((sample, index) => sample.elapsedMs - (samples[index]?.elapsedMs ?? sample.elapsedMs));
+  const observationSpanMs =
+    samples.length < 2 ? null : (samples.at(-1)?.elapsedMs ?? 0) - (samples[0]?.elapsedMs ?? 0);
   return {
-    samplingIntervalMs: 1_000,
+    requestedDelayAfterSampleMs: 1_000,
     sampleCount: samples.length,
+    observationSpanMs,
+    achievedSampleStartsPerSecond:
+      observationSpanMs === null ? null : ratePerSecond(samples.length - 1, observationSpanMs),
+    sampleStartInterval: summarizeSamples(
+      intervals,
+      "At least two resource samples are required to calculate achieved cadence.",
+    ),
     samples,
     maxima: {
       appCpuPercent: maximum((sample) => sample.appCpuPercent),

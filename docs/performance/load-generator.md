@@ -160,7 +160,7 @@ The run fails unless inspected controls equal:
 | application | `500000000` | `268435456` |
 | PostgreSQL | `1000000000` | `1073741824` |
 
-Compose text alone is not treated as enforcement evidence. CPU percentages and memory usage are sampled once per second; samples and maxima are reported. Periodic sampling can miss brief peaks and adds a small amount of host/client work.
+Compose text alone is not treated as enforcement evidence. After each `docker stats --no-stream` completion, the sampler waits one second before starting the next sample. Docker command latency means this is not guaranteed to achieve one sample per second. The report therefore records every monotonic sample start, the observation span, achieved start rate, and start-interval p50/p95/p99 rather than presenting the requested delay as actual cadence. Periodic sampling can miss brief peaks and adds a small amount of host/client work.
 
 All child processes use shell-disabled execution with argument arrays. Project names and run markers are validated. No command string is assembled from CLI input.
 
@@ -182,7 +182,7 @@ Expected rows are the sum of confirmed warm-up and measured HTTP accepts. The re
 
 The plans are post-ingestion diagnostics. Concurrent aggregation latency comes only from public HTTP samples collected during ingestion; the report does not mislabel post-run `EXPLAIN ANALYZE` time as concurrent request latency.
 
-The report assesses each resource, reliability, and performance requirement with an explicit `verified`, `not-verified`, or `not-evaluated` status and the exact measured predicate. `outcome: passed` means the workload, reconciliation, diagnostics, and cleanup completed correctly; it does not by itself mean every performance target passed. Smoke runs always use `not-evaluated` for final targets.
+The report assesses each resource, reliability, and performance requirement with an explicit `verified`, `not-verified`, or `not-evaluated` status and the exact measured predicate. `outcome: passed` means the workload, reconciliation, diagnostics, and cleanup completed correctly; it does not by itself mean every performance target passed. Smoke runs always use `not-evaluated` for final targets. `PERF-007` remains `not-verified` at baseline because comparative tuning evidence and final documentation are later tasks.
 
 ## Report publication and cleanup guarantees
 

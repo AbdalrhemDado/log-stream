@@ -135,9 +135,8 @@ export function assessBenchmarkTargets(input: {
     ),
     assessed(
       "PERF-007",
-      input.diagnostics.queryPlans["recentUnfilteredPage"] !== undefined &&
-        input.diagnostics.queryPlans["primaryAggregation"] !== undefined,
-      "The report includes configuration, environment, raw latency samples, resources, reconciliation, and post-ingestion query plans.",
+      false,
+      "Baseline evidence is captured; comparative tuning evidence and the final performance documentation are still pending.",
     ),
   ];
 }
