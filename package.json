@@ -13,6 +13,7 @@
     "build": "tsc --project tsconfig.build.json",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
+    "loadgen": "tsx tools/loadgen/run-load-generator.ts",
     "benchmark:ingestion": "tsx tools/benchmark/run-ingestion-microbenchmark.ts",
     "benchmark:query-plans": "tsx tools/benchmark/run-query-plan-review.ts",
     "schema:inspect": "node dist/database/schema-inspection.js",
