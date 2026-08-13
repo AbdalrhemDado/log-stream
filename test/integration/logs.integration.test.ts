@@ -21,6 +21,7 @@ import {
   type RetentionDatabasePool,
   type RetentionRunRequest,
 } from "../../src/modules/retention/retention-repository.js";
+import { endPoolAndWaitForClients } from "../harness/postgres-pool-teardown.js";
 
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
 const adminBaseUrl = process.env["TEST_ADMIN_DATABASE_URL"];
@@ -277,7 +278,7 @@ describe.skipIf(!hasPostgresEnvironment)("POST and GET /logs with PostgreSQL", (
     }
 
     if (runtimePool !== undefined) {
-      await runtimePool.end();
+      await endPoolAndWaitForClients(runtimePool);
       runtimePool = undefined;
     }
 
