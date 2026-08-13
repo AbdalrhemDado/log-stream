@@ -90,7 +90,8 @@ Never “fix” a checksum mismatch by editing the history row. That destroys th
 Capture headers and body together:
 
 ```powershell
-curl.exe --silent --show-error --include --request POST http://localhost:8080/logs --header "content-type: application/json" --data-raw '{"logs":[]}'
+$emptyBatch = '{"logs":[]}'
+$emptyBatch | curl.exe --silent --show-error --include --request POST http://localhost:8080/logs --header "content-type: application/json" --data-binary '@-'
 ```
 
 Check in order:
