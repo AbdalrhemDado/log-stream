@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  NODE_VERSION: 24.18.0
+  NPM_VERSION: 12.0.2
+
+jobs:
+  quality:
+    name: Quality and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install pinned npm
+        run: npm install --global npm@"$NPM_VERSION"
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Build production output
+        run: npm run build
+
+  system:
+    name: PostgreSQL integration and Compose contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install pinned npm
+        run: npm install --global npm@"$NPM_VERSION"
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Verify Docker tooling
+        run: |
+          docker version
+          docker compose version
+
+      - name: Run PostgreSQL integration tests
+        run: npm run test:integration
+
+      - name: Build, start, health-check, and test Docker Compose
+        run: npm run test:contract
+
+      - name: Show remaining Docker resources after failure
+        if: failure()
+        run: |
+          docker ps --all
+          docker network ls
+          docker volume ls
+
+      - name: Clean task-owned Docker resources
+        if: always()
+        run: |
+          while IFS= read -r container_id; do
+            if [ -n "$container_id" ]; then
+              docker rm --force "$container_id"
+            fi
+          done < <(docker ps --all --filter "name=logstream-migration-test-" --quiet)
+
+          while IFS= read -r project; do
+            case "$project" in
+              logstream-contract-*)
+                docker compose --project-name "$project" down --volumes --remove-orphans
+                ;;
+            esac
+          done < <(
+            docker ps --all \
+              --filter "label=com.docker.compose.project" \
+              --format '{{.Label "com.docker.compose.project"}}' \
+              | sort --unique
+          )
