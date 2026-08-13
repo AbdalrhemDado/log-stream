@@ -150,7 +150,8 @@ First prove workload comparability:
 
 ```powershell
 git status --short --branch
-docker compose config
+docker compose config --services
+docker compose config --images
 docker version
 docker compose version
 node --version
