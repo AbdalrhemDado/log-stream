@@ -29,6 +29,7 @@ const TRANSIENT_CODELESS_DATABASE_MESSAGES = new Set([
   "Connection terminated",
   "Connection terminated unexpectedly",
   "Connection terminated due to connection timeout",
+  "Query read timeout",
   "timeout exceeded when trying to connect",
   "timeout expired",
 ]);

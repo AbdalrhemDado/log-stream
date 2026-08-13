@@ -63,7 +63,7 @@ The older million-row experiment disabled routine logging globally with 250-row 
 
 ### Independent connection and query timeouts
 
-`DB_CONNECTION_TIMEOUT_MS=2000` previously controlled both connection/pool acquisition and every query. The supplied benchmark's p95/error boundary strongly indicates that queued work was converted into HTTP 500 responses around two seconds. `DB_QUERY_TIMEOUT_MS` is now independent, and both bounded defaults are 10,000 ms. This does not relax PostgreSQL durability settings or report success before commit.
+`DB_CONNECTION_TIMEOUT_MS=2000` previously controlled both connection/pool acquisition and every query. The settings are now independent: pool acquisition remains bounded at 2,000 ms so overload drains promptly, while query execution uses 10,000 ms. Exact pool and query timeout messages are classified as transient HTTP 503 responses with `Retry-After`, not internal HTTP 500 errors. This does not relax PostgreSQL durability settings or report success before commit.
 
 ## Additional retained-result smoke check
 
@@ -87,7 +87,7 @@ npm run loadgen -- `
   --output C:/Users/97056/AppData/Local/Temp/logstream-million-batch50-remediation.json
 ```
 
-The tool captured reference time `2026-08-13T18:28:36.711Z`, effective Docker controls, image identities, PostgreSQL durability/planner settings, query plans, resource samples, accounting, and cleanup evidence. That run used the stricter 2,000 ms pool-acquisition/connection timeout and the new 10,000 ms query timeout. The final Compose default subsequently raised only the pool-acquisition/connection timeout to 10,000 ms after `pg-pool` source inspection confirmed that the setting also governs queued checkout; the code and SQL path are unchanged.
+The tool captured reference time `2026-08-13T18:28:36.711Z`, effective Docker controls, image identities, PostgreSQL durability/planner settings, query plans, resource samples, accounting, and cleanup evidence. That run used the retained 2,000 ms pool-acquisition/connection timeout and 10,000 ms query timeout.
 
 | Metric | Result |
 | --- | ---: |
@@ -104,7 +104,7 @@ The tool captured reference time `2026-08-13T18:28:36.711Z`, effective Docker co
 
 The report's automated assessment verified the resource, reliability, throughput, aggregation, million-row, freshness, and one-aggregation-per-second requirements. `PERF-007` remained `not-verified` inside the generated JSON because documentation was intentionally written only after the run; this report supplies that comparative explanation without altering the generated artifact.
 
-After the pool-acquisition timeout default was raised from 2,000 to 10,000 ms, a final current-configuration 100,000-row smoke run processed **15,011.081 logs/s**, returned 2,000/2,000 HTTP 200 responses, measured ingestion p95 49.205 ms and aggregation p95 59.950 ms, exposed the freshness probe in 43.808 ms, reconciled 101,000/101,000 rows, and verified cleanup. The timeout-only change therefore did not introduce an observable smoke regression, but the million-row artifact remains the formal controlled result for the stricter acquisition setting.
+An intermediate experiment raised pool acquisition from 2,000 to 10,000 ms and passed a short smoke test, but the external grader later killed the complete benchmark at its five-minute command deadline. Because `pg-pool` applies the setting to queued checkout, the longer value was reverted: it exchanged prompt overload responses for a potentially long drain. The million-row artifact already verifies the retained 2,000/10,000 ms configuration.
 
 ## Rejected experiments
 
