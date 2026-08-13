@@ -14,6 +14,7 @@ import {
   createLogQueryRepository,
   type LogQueryRepository,
 } from "../../src/modules/query/log-query-repository.js";
+import { endPoolAndWaitForClients } from "../harness/postgres-pool-teardown.js";
 import type { LogFilters } from "../../src/modules/query/query-parameter-parser.js";
 
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
@@ -201,7 +202,7 @@ describe.skipIf(!hasPostgresEnvironment)("log query repository with PostgreSQL",
   });
 
   afterAll(async () => {
-    await runtimePool.end();
+    await endPoolAndWaitForClients(runtimePool);
     if (adminBaseUrl !== undefined) {
       await withClient(adminBaseUrl, async (admin) => {
         await admin.query(`DROP DATABASE ${trustedDatabaseIdentifier(databaseName)} WITH (FORCE)`);

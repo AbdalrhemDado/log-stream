@@ -13,6 +13,7 @@ import {
   parseLogAggregationQuery,
   type ParsedLogAggregationQuery,
 } from "../../src/modules/aggregation/aggregation-parameter-parser.js";
+import { endPoolAndWaitForClients } from "../harness/postgres-pool-teardown.js";
 import {
   createLogAggregationRepository,
   type LogAggregationRepository,
@@ -262,7 +263,7 @@ describe.skipIf(!hasPostgresEnvironment)("log aggregation repository with Postgr
   });
 
   afterAll(async () => {
-    await runtimePool.end();
+    await endPoolAndWaitForClients(runtimePool);
     if (adminBaseUrl !== undefined) {
       await withClient(adminBaseUrl, async (admin) => {
         await admin.query(`DROP DATABASE ${trustedDatabaseIdentifier(databaseName)} WITH (FORCE)`);

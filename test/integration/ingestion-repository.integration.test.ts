@@ -13,6 +13,7 @@ import { normalizeAttributes } from "../../src/domain/attribute-normalizer.js";
 import { validateLogEntry } from "../../src/domain/log-entry-validator.js";
 import type { LogId, LogInsertionRecord } from "../../src/domain/log-entry.js";
 import { createIngestionRepository } from "../../src/modules/ingestion/ingestion-repository.js";
+import { endPoolAndWaitForClients } from "../harness/postgres-pool-teardown.js";
 
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
 const adminBaseUrl = process.env["TEST_ADMIN_DATABASE_URL"];
@@ -125,7 +126,7 @@ describe.skipIf(!hasPostgresEnvironment)("ingestion repository with PostgreSQL",
 
   afterEach(async () => {
     if (runtimePool !== undefined) {
-      await runtimePool.end();
+      await endPoolAndWaitForClients(runtimePool);
       runtimePool = undefined;
     }
 

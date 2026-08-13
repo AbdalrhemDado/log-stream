@@ -524,8 +524,9 @@ describe("Compose contract harness", () => {
       return Promise.resolve(jsonResponse({ logs: [], next_cursor: null }));
     });
 
-    await expect(
-      execute({
+    let error: unknown;
+    try {
+      await execute({
         fetch: missingRetryAfter,
         command: (request, _index, defaultResult) => {
           if (request.arguments.includes("stop") && request.arguments.at(-1) === "postgres") {
@@ -533,8 +534,15 @@ describe("Compose contract harness", () => {
           }
           return Promise.resolve(defaultResult);
         },
-      }),
-    ).rejects.toThrow("Contract database interruption ingestion verification failed.");
+      });
+    } catch (caught: unknown) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(ComposeContractError);
+    expect((error as ComposeContractError).message).toBe(
+      "Contract database interruption ingestion verification failed. Observed response: status=503; retry-after=missing; body-keys=error; error-field=expected.",
+    );
   });
 
   it("classifies database connection interruption as unaccepted without inventing a status", async () => {

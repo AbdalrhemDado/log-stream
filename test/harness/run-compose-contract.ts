@@ -248,15 +248,33 @@ async function requireTransientFailure(
     return;
   }
   const body = await readJsonRecord(response, errorMessage);
+  const retryAfter = response.headers.get("retry-after");
   if (
     response.status !== 503 ||
-    response.headers.get("retry-after") !== "30" ||
+    retryAfter !== "30" ||
     Object.keys(body).length !== 1 ||
     body["error"] !== "Service temporarily unavailable." ||
     Object.hasOwn(body, "accepted") ||
     Object.hasOwn(body, "rejected")
   ) {
-    throw new ComposeContractError(errorMessage);
+    const bodyKeys = Object.keys(body);
+    const safeBodyKeys = bodyKeys.every((key) => /^[a-z_]{1,50}$/u.test(key))
+      ? bodyKeys.sort().join(",") || "none"
+      : "unsafe";
+    const retryAfterClassification =
+      retryAfter === "30" ? "expected" : retryAfter === null ? "missing" : "unexpected";
+    const errorClassification =
+      body["error"] === "Service temporarily unavailable."
+        ? "expected"
+        : typeof body["error"] === "string"
+          ? "unexpected-string"
+          : Object.hasOwn(body, "error")
+            ? "unexpected-type"
+            : "missing";
+
+    throw new ComposeContractError(
+      `${errorMessage} Observed response: status=${String(response.status)}; retry-after=${retryAfterClassification}; body-keys=${safeBodyKeys}; error-field=${errorClassification}.`,
+    );
   }
 }
 

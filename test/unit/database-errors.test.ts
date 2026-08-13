@@ -16,11 +16,16 @@ describe("translateDatabaseError", () => {
     "57P01",
     "57P02",
     "57P03",
+    "EAI_AGAIN",
     "ECONNABORTED",
     "ECONNREFUSED",
     "ECONNRESET",
+    "EHOSTDOWN",
     "EHOSTUNREACH",
+    "ENETDOWN",
+    "ENETRESET",
     "ENETUNREACH",
+    "ENOTFOUND",
     "EPIPE",
     "ETIMEDOUT",
   ])("maps the explicitly allowed transient code %s to TransientServiceError", (code) => {
@@ -31,8 +36,13 @@ describe("translateDatabaseError", () => {
   });
 
   it.each([
+    "Client has encountered a connection error and is not queryable",
+    "Client was closed and is not queryable",
+    "Connection terminated",
     "Connection terminated unexpectedly",
     "Connection terminated due to connection timeout",
+    "timeout exceeded when trying to connect",
+    "timeout expired",
   ])("maps the exact code-less driver message %s to TransientServiceError", (message) => {
     const translated = translateDatabaseError(new Error(message));
 
@@ -41,6 +51,9 @@ describe("translateDatabaseError", () => {
   });
 
   it.each([
+    "client has encountered a connection error and is not queryable",
+    "Client was closed and is not queryable.",
+    "Connection terminated ",
     "connection terminated unexpectedly",
     "Connection terminated Unexpectedly",
     "Connection terminated unexpectedly ",
@@ -48,6 +61,8 @@ describe("translateDatabaseError", () => {
     "Connection terminated unexpectedly suffix",
     "Connection terminated due to connection timeout.",
     "Connection terminated due to timeout",
+    "Timeout exceeded when trying to connect",
+    "timeout expired.",
   ])("keeps a near-match or case-variant message internal: %s", (message) => {
     expect(translateDatabaseError(new Error(message))).toBeInstanceOf(InternalDatabaseError);
   });

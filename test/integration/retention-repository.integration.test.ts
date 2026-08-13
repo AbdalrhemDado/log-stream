@@ -19,6 +19,7 @@ import {
   type RetentionLogger,
   type RetentionTimer,
 } from "../../src/modules/retention/retention-service.js";
+import { endPoolAndWaitForClients } from "../harness/postgres-pool-teardown.js";
 
 const migrationsDirectory = fileURLToPath(new URL("../../migrations", import.meta.url));
 const adminBaseUrl = process.env["TEST_ADMIN_DATABASE_URL"];
@@ -899,7 +900,7 @@ ORDER BY child.relname
         if (firstRun !== undefined) {
           await Promise.allSettled([firstRun]);
         }
-        await pool.end();
+        await endPoolAndWaitForClients(pool);
         await Promise.all([owner.end(), observer.end()]);
       }
     });
@@ -1097,7 +1098,7 @@ ORDER BY child.relname
             `DROP TABLE IF EXISTS logstream.${trustedPartitionIdentifier(collisionName)}`,
           );
         }
-        await pool.end();
+        await endPoolAndWaitForClients(pool);
         await owner.end();
       }
     });
@@ -1152,7 +1153,7 @@ ORDER BY child.relname
         expect(repeatedStop).toBe(firstStop);
         shutdown = stopRetentionBeforeDatabase(service, async () => {
           poolCloseCalls += 1;
-          await pool.end();
+          await endPoolAndWaitForClients(pool);
         });
         await Promise.resolve();
         expect(observedSignal?.aborted).toBe(true);
@@ -1188,7 +1189,7 @@ WHERE datname = pg_catalog.current_database()
           if (service !== undefined) {
             await service.stop();
           }
-          await pool.end();
+          await endPoolAndWaitForClients(pool);
         }
         if (blockerInstalled) {
           await removeDefaultCleanupBlocker(owner);
@@ -1264,7 +1265,7 @@ WHERE datname = pg_catalog.current_database()
           blocker.release();
         }
       } finally {
-        await pool.end();
+        await endPoolAndWaitForClients(pool);
       }
     });
   },
