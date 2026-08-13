@@ -1,0 +1,414 @@
+{
+  "schemaVersion": 1,
+  "outcome": "passed",
+  "failureReasons": [],
+  "generatedAtUtc": "2026-08-13T11:27:14.597Z",
+  "source": {
+    "branch": "perf/load-generator",
+    "commit": "c9e6b121f00e922340996978870523046397ea0e",
+    "dirty": true,
+    "sourceState": "The working tree contains uncommitted changes."
+  },
+  "configuration": {
+    "measuredRows": 20000,
+    "warmupRows": 1000,
+    "batchSize": 250,
+    "concurrency": 4,
+    "outputPath": "C:\\Users\\97056\\Desktop\\logstream-project\\docs\\performance\\results\\load-generator-smoke.json",
+    "requestTimeoutMs": 10000,
+    "baseUrl": "http://127.0.0.1:8080",
+    "reproductionCommand": [
+      "npm",
+      "run",
+      "loadgen",
+      "--",
+      "--measured-rows",
+      "20000",
+      "--warmup-rows",
+      "1000",
+      "--batch-size",
+      "250",
+      "--concurrency",
+      "4",
+      "--seed",
+      "20260812",
+      "--output",
+      "C:\\Users\\97056\\Desktop\\logstream-project\\docs\\performance\\results\\load-generator-smoke.json",
+      "--request-timeout-ms",
+      "10000",
+      "--reference-time",
+      "2026-08-13T11:27:01.408Z",
+      "--base-url",
+      "http://127.0.0.1:8080"
+    ],
+    "composeProject": "logstream-loadgen-20260813112701-15412-a795e0"
+  },
+  "workload": {
+    "generatorVersion": "1.0.0",
+    "seed": 20260812,
+    "referenceTimeUtc": "2026-08-13T11:27:01.408Z",
+    "runId": "lg-v1-013527cc-20260813t112701408z",
+    "distribution": {
+      "timestampWindowDays": 28,
+      "services": [
+        "checkout",
+        "auth",
+        "catalog",
+        "payments",
+        "orders",
+        "inventory",
+        "shipping",
+        "notifications"
+      ],
+      "levels": {
+        "debugPercent": 10,
+        "infoPercent": 65,
+        "warnPercent": 18,
+        "errorPercent": 7
+      },
+      "messages": [
+        "request completed",
+        "cache lookup completed",
+        "downstream response received",
+        "inventory reservation updated",
+        "payment workflow advanced",
+        "notification delivery scheduled"
+      ],
+      "attributes": [
+        "loadgen_run_id:string",
+        "loadgen_phase:string",
+        "loadgen_sequence:string",
+        "request_id:string",
+        "region:string",
+        "attempt:number",
+        "cached:boolean"
+      ]
+    },
+    "generationIdentity": "generator version + seed + reference timestamp + phase + global row ordinal"
+  },
+  "environment": {
+    "nodeVersion": "v24.18.0",
+    "npmVersion": "11.16.0",
+    "platform": "win32",
+    "release": "10.0.26200",
+    "architecture": "x64",
+    "hostName": "DESKTOP-DRL30K2",
+    "cpuModel": "Intel(R) Core(TM) i5-14400F",
+    "logicalCpuCount": 16,
+    "hostMemoryBytes": 34187763712,
+    "hostFreeMemoryAtCaptureBytes": 15064403968,
+    "dockerVersion": "Docker version 29.6.2, build dfc4efb",
+    "composeVersion": "Docker Compose version v5.3.1",
+    "postgresVersion": "postgres (PostgreSQL) 16.14 (Debian 16.14-1.pgdg12+1)"
+  },
+  "resourceControls": {
+    "app": {
+      "nanoCpus": 500000000,
+      "memoryBytes": 268435456
+    },
+    "postgres": {
+      "nanoCpus": 1000000000,
+      "memoryBytes": 1073741824
+    }
+  },
+  "resourceUsage": {
+    "samplingIntervalMs": 1000,
+    "sampleCount": 1,
+    "samples": [
+      {
+        "elapsedMs": 0.9225999999998749,
+        "appCpuPercent": 49.7,
+        "appMemoryBytes": 50226790,
+        "postgresCpuPercent": 26.58,
+        "postgresMemoryBytes": 77846282
+      }
+    ],
+    "maxima": {
+      "appCpuPercent": 49.7,
+      "appMemoryBytes": 50226790,
+      "postgresCpuPercent": 26.58,
+      "postgresMemoryBytes": 77846282
+    }
+  },
+  "warmup": {
+    "phase": "warmup",
+    "counters": {
+      "requestsScheduled": 4,
+      "requestsStarted": 4,
+      "requestsCompleted": 4,
+      "statusCodes": {
+        "200": 4
+      },
+      "transportFailures": 0,
+      "timeouts": 0,
+      "invalidResponses": 0,
+      "rowsScheduled": 1000,
+      "attemptedRows": 1000,
+      "confirmedAcceptedRows": 1000,
+      "serverRejectedRows": 0,
+      "indeterminateRows": 0,
+      "requestsNotStarted": 0,
+      "requestsUnresolved": 0,
+      "rowsNotAttempted": 0
+    },
+    "durationMs": 61.230100000000675,
+    "confirmedAcceptedRowsPerSecond": 16331.836792688384,
+    "attemptedRowsPerSecond": 16331.836792688384,
+    "requestLatency": {
+      "unit": "milliseconds",
+      "method": "non-interpolated nearest-rank",
+      "sampleCount": 4,
+      "p50": 53.942400000001726,
+      "p95": 55.25960000000123,
+      "p99": 55.25960000000123,
+      "unavailableReason": null,
+      "rawSamples": [
+        54.45430000000124,
+        55.25960000000123,
+        50.729699999999866,
+        53.942400000001726
+      ],
+      "rawSamplesTruncated": false
+    },
+    "probe": null
+  },
+  "aggregationWarmup": {
+    "attempted": true,
+    "successful": true,
+    "terminalKind": "success",
+    "latencyMs": 51.455299999999625
+  },
+  "measuredIngestion": {
+    "phase": "measured",
+    "counters": {
+      "requestsScheduled": 80,
+      "requestsStarted": 80,
+      "requestsCompleted": 80,
+      "statusCodes": {
+        "200": 80
+      },
+      "transportFailures": 0,
+      "timeouts": 0,
+      "invalidResponses": 0,
+      "rowsScheduled": 20000,
+      "attemptedRows": 20000,
+      "confirmedAcceptedRows": 20000,
+      "serverRejectedRows": 0,
+      "indeterminateRows": 0,
+      "requestsNotStarted": 0,
+      "requestsUnresolved": 0,
+      "rowsNotAttempted": 0
+    },
+    "durationMs": 1242.625,
+    "confirmedAcceptedRowsPerSecond": 16094.960265566844,
+    "attemptedRowsPerSecond": 16094.960265566844,
+    "requestLatency": {
+      "unit": "milliseconds",
+      "method": "non-interpolated nearest-rank",
+      "sampleCount": 80,
+      "p50": 74.52480000000105,
+      "p95": 97.42609999999877,
+      "p99": 102.69599999999991,
+      "unavailableReason": null,
+      "rawSamples": [
+        90.24259999999958,
+        99.46670000000086,
+        96.93080000000009,
+        102.69599999999991,
+        28.664099999999962,
+        27.386399999999412,
+        26.69629999999961,
+        33.91120000000046,
+        74.73769999999968,
+        85.70130000000063,
+        80.47569999999905,
+        73.46430000000146,
+        92.56000000000131,
+        98.92630000000099,
+        97.95960000000014,
+        97.42609999999877,
+        19.13879999999881,
+        79.88180000000102,
+        80.32900000000154,
+        86.9956000000002,
+        80.16150000000016,
+        30.22520000000077,
+        25.886500000000524,
+        31.482099999999264,
+        31.519000000000233,
+        74.52480000000105,
+        74.90790000000015,
+        74.95390000000043,
+        75.90520000000106,
+        94.64940000000024,
+        94.85750000000007,
+        95.15359999999964,
+        94.98679999999877,
+        26.120600000000195,
+        25.991700000000492,
+        26.571200000000317,
+        25.54059999999845,
+        20.189400000001115,
+        20.17109999999957,
+        20.282499999999345,
+        76.20579999999973,
+        66.89159999999902,
+        66.01870000000054,
+        67.13130000000092,
+        87.52779999999984,
+        93.86449999999968,
+        95.40229999999974,
+        95.25420000000122,
+        15.573999999998705,
+        91.71129999999903,
+        86.84170000000086,
+        82.1281999999992,
+        87.76870000000054,
+        26.191600000000108,
+        25.683600000000297,
+        25.976800000000367,
+        27.797200000000885,
+        23.610999999998967,
+        69.20240000000013,
+        66.64800000000105,
+        76.90980000000127,
+        59.080299999999625,
+        24.339700000000448,
+        29.10440000000017,
+        26.686799999999494,
+        94.33590000000004,
+        84.20889999999963,
+        85.7466000000004,
+        84.58530000000064,
+        91.80659999999989,
+        83.14099999999962,
+        88.95759999999973,
+        86.01330000000053,
+        24.299199999999473,
+        25.68579999999929,
+        26.202699999999822,
+        25.735000000000582,
+        20.32049999999981,
+        19.704899999998815,
+        18.255599999998594
+      ],
+      "rawSamplesTruncated": false
+    },
+    "probe": {
+      "log": {
+        "timestamp": "2026-08-07T03:26:59.005Z",
+        "level": "debug",
+        "service": "payments",
+        "message": "request completed for payments",
+        "attributes": {
+          "loadgen_run_id": "lg-v1-013527cc-20260813t112701408z",
+          "loadgen_phase": "measured",
+          "loadgen_sequence": "m-000000000000",
+          "request_id": "synthetic-13527cc-m-000000000000",
+          "region": "eu-west",
+          "attempt": 3,
+          "cached": false
+        }
+      },
+      "postDispatchMonotonicMs": 10027.275,
+      "postAcknowledgementMonotonicMs": 10126.7417,
+      "accepted": true
+    }
+  },
+  "aggregation": {
+    "counters": {
+      "scheduledTicks": 2,
+      "startedRequests": 2,
+      "completedRequests": 2,
+      "successfulResponses": 2,
+      "httpFailures": 0,
+      "timeoutFailures": 0,
+      "transportFailures": 0,
+      "invalidResponses": 0,
+      "missedTicks": 0,
+      "unresolvedRequests": 0
+    },
+    "intendedRatePerSecond": 1,
+    "achievedStartRatePerSecond": 1.5996949061874917,
+    "requestLatencySuccessful": {
+      "unit": "milliseconds",
+      "method": "non-interpolated nearest-rank",
+      "sampleCount": 2,
+      "p50": 21.482700000000477,
+      "p95": 23.174400000001697,
+      "p99": 23.174400000001697,
+      "unavailableReason": null,
+      "rawSamples": [
+        23.174400000001697,
+        21.482700000000477
+      ],
+      "rawSamplesTruncated": false
+    },
+    "requestLatencyAllTerminal": {
+      "unit": "milliseconds",
+      "method": "non-interpolated nearest-rank",
+      "sampleCount": 2,
+      "p50": 21.482700000000477,
+      "p95": 23.174400000001697,
+      "p99": 23.174400000001697,
+      "unavailableReason": null,
+      "rawSamples": [
+        23.174400000001697,
+        21.482700000000477
+      ],
+      "rawSamplesTruncated": false
+    },
+    "schedulingLag": {
+      "unit": "milliseconds",
+      "method": "non-interpolated nearest-rank",
+      "sampleCount": 2,
+      "p50": 0.43699999999989814,
+      "p95": 5.293700000000172,
+      "p99": 5.293700000000172,
+      "unavailableReason": null,
+      "rawSamples": [
+        0.43699999999989814,
+        5.293700000000172
+      ],
+      "rawSamplesTruncated": false
+    },
+    "drainTimedOut": false
+  },
+  "freshness": {
+    "outcome": "visible",
+    "postDispatchToVisibilityMs": 116.07300000000032,
+    "postAcknowledgementToVisibilityMs": 16.606299999999464,
+    "pollCount": 1,
+    "pollFailures": 0
+  },
+  "reconciliation": {
+    "preExistingRows": 0,
+    "expectedRows": 21000,
+    "observedRows": 21000,
+    "delta": 0,
+    "passed": true
+  },
+  "cleanup": {
+    "attempted": true,
+    "composeDownSucceeded": true,
+    "remainingContainers": [],
+    "remainingNetworks": [],
+    "remainingVolumes": [],
+    "passed": true,
+    "error": null
+  },
+  "limitations": [
+    "This bounded Task 9.1 smoke validates the measurement tool, not final performance targets.",
+    "Host scheduling, Docker Desktop virtualization, and the load client may affect observations.",
+    "Resource sampling is periodic and may miss brief peaks."
+  ],
+  "unverifiedRequirements": [
+    "PERF-001 sustained 15,000 accepted logs per second",
+    "PERF-002 primary aggregation below one second p95 under the Stage 9.2 workload",
+    "PERF-003 maintained query performance during the controlled million-row run",
+    "PERF-004 approximately one million verified rows",
+    "PERF-005 freshness under the controlled Stage 9.2 workload",
+    "PERF-006 one aggregation request per second throughout the controlled benchmark",
+    "PERF-007 final evidence package"
+  ]
+}
