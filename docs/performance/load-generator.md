@@ -20,6 +20,7 @@ npm run loadgen -- `
   --concurrency 4 `
   --seed 20260812 `
   --request-timeout-ms 5000 `
+  --run-kind smoke `
   --reference-time 2026-08-12T12:00:00.000Z `
   --output docs/performance/results/load-generator-smoke.json
 ```
@@ -41,6 +42,7 @@ The JSON report contains the exact sanitized reproduction argument array. It nev
 | `--request-timeout-ms` | `5000` | `100`–`120,000` | Per-request timeout. |
 | `--reference-time` | captured once | strict UTC ISO 8601 | Optional explicit workload reference time. |
 | `--base-url` | `http://127.0.0.1:8080` | managed local URL only | Public application URL. Credentials are prohibited. |
+| `--run-kind` | `smoke` | `smoke` or `baseline` | Declares whether final targets are not evaluated or assessed from a controlled million-row run. |
 
 The tool schedules at most 250,000 ingestion requests. These are client safety limits, not limits on the public API. Unknown, duplicate, missing-value, partial-numeric, unsafe-integer, and out-of-range options fail before Compose startup.
 
@@ -167,6 +169,20 @@ All child processes use shell-disabled execution with argument arrays. Project n
 Before HTTP traffic, fixed SQL confirms that the isolated database has zero rows for the run marker. After all HTTP work and before cleanup, the same fixed query counts rows with that exact marker. The marker is supplied as a validated `psql` variable; it is not interpolated into SQL or a shell command.
 
 Expected rows are the sum of confirmed warm-up and measured HTTP accepts. The report contains pre-existing, expected, observed, delta, and pass/fail values. All workload writes still enter through `POST /logs`; direct database access is evidence-only.
+
+## Controlled baseline diagnostics and target assessment
+
+`--run-kind baseline` adds evidence collection after measured ingestion and HTTP/PostgreSQL reconciliation but before cleanup. It captures:
+
+- a strict allowlist of non-secret application environment values and rejects drift from the frozen baseline;
+- immutable application and PostgreSQL container image identities;
+- PostgreSQL settings relevant to memory, planning, WAL, and durability, including `fsync`, `synchronous_commit`, and `full_page_writes`;
+- database, leaf-partition, table, and index sizes;
+- `EXPLAIN (ANALYZE, BUFFERS, WAL, SETTINGS, FORMAT JSON)` for the recent unfiltered page and primary aggregation.
+
+The plans are post-ingestion diagnostics. Concurrent aggregation latency comes only from public HTTP samples collected during ingestion; the report does not mislabel post-run `EXPLAIN ANALYZE` time as concurrent request latency.
+
+The report assesses each resource, reliability, and performance requirement with an explicit `verified`, `not-verified`, or `not-evaluated` status and the exact measured predicate. `outcome: passed` means the workload, reconciliation, diagnostics, and cleanup completed correctly; it does not by itself mean every performance target passed. Smoke runs always use `not-evaluated` for final targets.
 
 ## Report publication and cleanup guarantees
 

@@ -33,6 +33,8 @@ describe("load-generator strict configuration", () => {
       "10000",
       "--reference-time",
       REFERENCE,
+      "--run-kind",
+      "baseline",
     ]);
 
     expect(options).toMatchObject({
@@ -45,6 +47,7 @@ describe("load-generator strict configuration", () => {
       requestTimeoutMs: 10_000,
       referenceTimeUtc: REFERENCE,
       baseUrl: "http://127.0.0.1:8080",
+      runKind: "baseline",
     });
   });
 
@@ -58,6 +61,7 @@ describe("load-generator strict configuration", () => {
     ["invalid calendar time", ["--reference-time", "2026-02-30T00:00:00Z"]],
     ["credential URL", ["--base-url", "http://user:token@127.0.0.1:8080"]],
     ["wrong port", ["--base-url", "http://127.0.0.1:8081"]],
+    ["invalid run kind", ["--run-kind", "final"]],
   ])("rejects %s options", (_label, arguments_) => {
     expect(() => parseLoadGeneratorOptions(arguments_)).toThrow(LoadGeneratorConfigurationError);
   });

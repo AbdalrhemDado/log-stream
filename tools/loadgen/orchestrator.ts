@@ -2,6 +2,7 @@ import { performance } from "node:perf_hooks";
 
 import { createAggregationSender, createIngestionSender } from "./api-client.js";
 import { startAggregationScheduler } from "./aggregation.js";
+import { assessBenchmarkTargets } from "./assessment.js";
 import { createCommandRunner, SafeCommandError } from "./commands.js";
 import { resolveRunConfiguration } from "./config.js";
 import {
@@ -13,6 +14,7 @@ import {
   startCompose,
   waitForHealth,
 } from "./docker.js";
+import { captureBenchmarkDiagnostics } from "./diagnostics.js";
 import { captureEnvironment, captureGitSource } from "./environment.js";
 import { observeFreshness } from "./freshness.js";
 import { defaultSleep, systemClock, type HttpDependencies } from "./http.js";
@@ -23,6 +25,8 @@ import {
   LOAD_GENERATOR_VERSION,
   REPORT_SCHEMA_VERSION,
   type AggregationResult,
+  type BenchmarkDiagnostics,
+  type BenchmarkTargetAssessment,
   type CleanupVerification,
   type CommandRunner,
   type FreshnessResult,
@@ -69,7 +73,8 @@ function defaultDependencies(): OrchestratorDependencies {
   };
 }
 
-function initialReport(now: Date): LoadGeneratorReport {
+function initialReport(now: Date, runKind: LoadGeneratorOptions["runKind"]): LoadGeneratorReport {
+  const isSmoke = runKind === "smoke";
   return {
     schemaVersion: REPORT_SCHEMA_VERSION,
     outcome: "failed",
@@ -87,21 +92,17 @@ function initialReport(now: Date): LoadGeneratorReport {
     aggregation: null,
     freshness: null,
     reconciliation: null,
+    diagnostics: null,
+    targetAssessment: [],
     cleanup: NO_CLEANUP,
     limitations: [
-      "This bounded Task 9.1 smoke validates the measurement tool, not final performance targets.",
+      isSmoke
+        ? "This bounded smoke validates the measurement tool, not final performance targets."
+        : "This controlled baseline measures the frozen implementation without application tuning.",
       "Host scheduling, Docker Desktop virtualization, and the load client may affect observations.",
       "Resource sampling is periodic and may miss brief peaks.",
     ],
-    unverifiedRequirements: [
-      "PERF-001 sustained 15,000 accepted logs per second",
-      "PERF-002 primary aggregation below one second p95 under the Stage 9.2 workload",
-      "PERF-003 maintained query performance during the controlled million-row run",
-      "PERF-004 approximately one million verified rows",
-      "PERF-005 freshness under the controlled Stage 9.2 workload",
-      "PERF-006 one aggregation request per second throughout the controlled benchmark",
-      "PERF-007 final evidence package",
-    ],
+    unverifiedRequirements: [],
   };
 }
 
@@ -189,7 +190,7 @@ export async function runManagedLoadGenerator(
   process.once("SIGINT", abort);
   process.once("SIGTERM", abort);
 
-  let report = initialReport(dependencies.now());
+  let report = initialReport(dependencies.now(), configuration.runKind);
   let cleanup: CleanupVerification;
   let primaryFailure: string | null = null;
   let source: Readonly<Record<string, unknown>> = {};
@@ -201,6 +202,8 @@ export async function runManagedLoadGenerator(
   let aggregation: AggregationResult | null = null;
   let freshness: FreshnessResult | null = null;
   let reconciliation: RowReconciliation | null = null;
+  let diagnostics: BenchmarkDiagnostics | null = null;
+  let targetAssessment: readonly BenchmarkTargetAssessment[] = [];
   const resourceSamples: ResourceSample[] = [];
 
   try {
@@ -341,6 +344,24 @@ export async function runManagedLoadGenerator(
       warmup.counters.confirmedAcceptedRows + measured.counters.confirmedAcceptedRows,
       observedRows,
     );
+    diagnostics = await captureBenchmarkDiagnostics({
+      runner: dependencies.runner,
+      project: configuration.composeProject,
+      containers,
+      runId: configuration.runId,
+      referenceTimeUtc: configuration.referenceTimeUtc,
+    });
+    targetAssessment = assessBenchmarkTargets({
+      runKind: configuration.runKind,
+      configuredMeasuredRows: configuration.measuredRows,
+      warmup,
+      measured,
+      aggregation,
+      freshness,
+      reconciliation,
+      diagnostics,
+      resourceControlsVerified: true,
+    });
     const failures = workloadFailures({ warmup, measured, aggregation, freshness, reconciliation });
     if (abortController.signal.aborted) failures.push("Run was interrupted by SIGINT or SIGTERM.");
     if (failures.length > 0) primaryFailure = failures.join(" ");
@@ -373,6 +394,7 @@ export async function runManagedLoadGenerator(
       baseUrl: configuration.baseUrl,
       reproductionCommand: configuration.reproductionCommand,
       composeProject: configuration.composeProject,
+      runKind: configuration.runKind,
     },
     workload: {
       generatorVersion: LOAD_GENERATOR_VERSION,
@@ -392,7 +414,12 @@ export async function runManagedLoadGenerator(
     aggregation,
     freshness,
     reconciliation,
+    diagnostics,
+    targetAssessment,
     cleanup,
+    unverifiedRequirements: targetAssessment
+      .filter((assessment) => assessment.status !== "verified")
+      .map((assessment) => `${assessment.requirement}: ${assessment.status}`),
   };
   await dependencies.publishReport(configuration.outputPath, report);
   return report;
