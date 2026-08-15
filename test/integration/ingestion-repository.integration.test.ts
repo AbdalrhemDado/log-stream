@@ -100,7 +100,6 @@ function insertionRecord(
   return {
     ...result.value,
     id: id as LogId,
-    attributesSearch: normalizeAttributes(result.value.attributes),
   };
 }
 
@@ -206,7 +205,7 @@ ORDER BY id
       service: currentRecord.service,
       message: currentRecord.message,
       attributes: currentRecord.attributes,
-      attributes_search: currentRecord.attributesSearch,
+      attributes_search: normalizeAttributes(currentRecord.attributes),
       partition_name: "logstream.logs_20260808",
     });
     expect(current?.timestamp.toISOString()).toBe(currentRecord.timestamp);
@@ -230,7 +229,7 @@ ORDER BY id
       service: oldRecord.service,
       message: oldRecord.message,
       attributes: oldRecord.attributes,
-      attributes_search: oldRecord.attributesSearch,
+      attributes_search: normalizeAttributes(oldRecord.attributes),
       partition_name: "logstream.logs_default",
     });
     expect(old?.timestamp.toISOString()).toBe(oldRecord.timestamp);

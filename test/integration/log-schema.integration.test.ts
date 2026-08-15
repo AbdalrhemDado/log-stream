@@ -303,12 +303,15 @@ WHERE schemaname = 'logstream' AND tablename = 'logs'
 ORDER BY indexname
 `);
       expect(indexes.rows.map((row) => row.indexname)).toEqual([
+        "logs_message_trgm_idx",
         "logs_pkey",
         "logs_service_timestamp_id_idx",
       ]);
-      expect(indexes.rows[1]?.indexdef.replaceAll('"', "")).toContain(
-        "(service, timestamp DESC, id DESC)",
-      );
+      expect(
+        indexes.rows
+          .find((row) => row.indexname === "logs_service_timestamp_id_idx")
+          ?.indexdef.replaceAll('"', ""),
+      ).toContain("(service, timestamp DESC, id DESC)");
 
       const allIndexes = await owner.query<{ access_method: string; definition: string }>(`
 SELECT access_method.amname AS access_method, pg_get_indexdef(index_class.oid) AS definition
@@ -320,10 +323,16 @@ JOIN pg_am AS access_method ON access_method.oid = index_class.relam
 WHERE namespace.nspname = 'logstream'
   AND (table_class.relname = 'logs' OR table_class.relname LIKE 'logs\\_%' ESCAPE '\\')
 `);
-      expect(allIndexes.rows.every((index) => index.access_method === "btree")).toBe(true);
+      expect(
+        allIndexes.rows.some(
+          (index) =>
+            index.access_method === "gist" &&
+            /message gist_trgm_ops \(siglen='64'\)/iu.test(index.definition),
+        ),
+      ).toBe(true);
       expect(
         allIndexes.rows.some((index) =>
-          /level|gin|trgm|message|created_at/iu.test(index.definition),
+          /attributes_search jsonb_path_ops|level|created_at/iu.test(index.definition),
         ),
       ).toBe(false);
     });

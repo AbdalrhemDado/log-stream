@@ -122,3 +122,61 @@ Re-run the external benchmark with the retained changes. Confirm that:
 3. Aggregation remains below one second p95 during ingestion.
 4. All accepted rows reconcile after drain and no timeout-induced indeterminate work appears.
 5. The scoped logging decision is reconsidered if the external request size is materially larger than the supplied benchmark suggests.
+
+## 2026-08-14 adaptive overload batching
+
+The next external result remained database-bound: 2,488.33 accepted logs/s, PostgreSQL near one CPU, application CPU near 10%, ingestion p95 2.09 seconds, aggregation p95 2.19 seconds, and HTTP 503 responses. Correctness remained 75/75 and every accepted row reconciled. This showed that error translation bounded overload correctly but did not add capacity.
+
+The retained experiment adds an adaptive coordinator above the existing durable `UNNEST` repository. Up to three writes start immediately. Only requests waiting behind those writes are combined, up to 1,000 rows after at most 2 ms. Every HTTP request still waits for the shared statement to commit. The queue rejects overload with the existing HTTP 503 contract, and a single public request is never rejected merely because it exceeds an internal batch threshold.
+
+Identical command shape for the comparison:
+
+```powershell
+npm run loadgen -- `
+  --measured-rows 100000 `
+  --warmup-rows 1000 `
+  --batch-size 25 `
+  --concurrency 64 `
+  --seed 20260814 `
+  --request-timeout-ms 10000 `
+  --run-kind smoke `
+  --output <temporary-json-path>
+```
+
+| Metric | Direct request writes | Adaptive backlog batching | Change |
+| --- | ---: | ---: | ---: |
+| Confirmed throughput | 8,291.276 logs/s | 12,178.509 logs/s | +46.88% |
+| Ingestion p50 | 194.097 ms | 119.311 ms | -38.53% |
+| Ingestion p95 | 301.984 ms | 222.798 ms | -26.22% |
+| Aggregation p95 | 455.486 ms | 172.198 ms | -62.19% |
+| Peak application memory | 96.3 MiB | 62.5 MiB | -35.10% |
+| Peak PostgreSQL CPU | 52.79% | 29.12% | -44.84% |
+| HTTP success | 4,000/4,000 | 4,000/4,000 | exact |
+| Reconciled rows | 101,000/101,000 | 101,000/101,000 | exact |
+
+The retained result does not establish the 15,000 logs/s target for 25-row requests. Application CPU reached its 0.5-CPU allocation after PostgreSQL pressure fell, identifying validation/normalization/serialization and per-request HTTP work as the next measured bottleneck. A 2,000-row always-on batch and always-on batching for low concurrency were rejected because their latency/throughput trade-offs were worse.
+
+### Shift normalized-search construction to PostgreSQL
+
+The application previously copied every validated attribute object into a second string-valued object and serialized both JSON documents into separate PostgreSQL parameter arrays. The retained SQL now derives `attributes_search` from the original JSONB inside each combined `UNNEST` statement. The expression is hard-coded; all user data remains parameterized. Original response value types and string-comparison behavior are unchanged and were verified by the integration and contract suites.
+
+| Metric | Application normalization | SQL normalization | Change |
+| --- | ---: | ---: | ---: |
+| 25 rows, concurrency 64 throughput | 12,178.509 logs/s | 12,917.729 logs/s | +6.07% |
+| 25 rows, concurrency 64 ingestion p95 | 222.798 ms | 210.846 ms | -5.36% |
+| 25 rows, concurrency 64 aggregation p95 | 172.198 ms | 154.307 ms | -10.39% |
+| 25 rows, concurrency 64 PostgreSQL peak CPU | 29.12% | 39.67% | +36.23% |
+| 50 rows, concurrency 4 throughput | 13,752.857 logs/s | 14,693.424 logs/s | +6.84% |
+| 50 rows, concurrency 4 ingestion p95 | 53.004 ms | 46.372 ms | -12.51% |
+| 50 rows, concurrency 4 aggregation p95 | 87.464 ms | 79.241 ms | -9.40% |
+| HTTP success and reconciliation | Exact | Exact | Preserved |
+
+The repository-only 1,000-row microbenchmark decreased from 61,908.215 to 57,684.932 rows/s because PostgreSQL now performs the normalization work. The constrained HTTP workloads nevertheless improved because they removed application allocations and serialization from the measured 0.5-CPU bottleneck. A direct JSON response fast path was rejected after reducing throughput to 10,235.733 logs/s. Four immediate writer lanes were also rejected: throughput was unchanged while aggregation p95 rose to 238.388 ms.
+
+### Retain only the measured message-search index
+
+The query-plan baseline showed literal substring search as the slowest list scenario at 107.494 ms over one million rows. A partitioned `pg_trgm` GiST index with a 64-byte signature changed that scenario to bitmap index/heap scans at 7.860 ms, a 92.69% reduction in this isolated observation. The index family occupied 120,012,800 bytes. A default-size GiST signature measured 24.389 ms, while a GIN message index and the combined message/attribute candidates could not complete the million-row review inside PostgreSQL's 1 GiB limit.
+
+The retained constrained HTTP run used the same 100,000 measured rows, 1,000 warm-up rows, batch size 25, concurrency 64, seed, and timeout as the adaptive-batching comparison. It accepted all 100,000 measured rows at 15,017.470 logs/s; ingestion p50/p95/p99 were 98.959/203.859/256.624 ms, aggregation p95 was 135.681 ms, and final reconciliation observed all 101,000 warm-up plus measured rows. Peak sampled application/PostgreSQL CPU was 52.71%/60.80%, and peak memory was 107,164,467/179,411,354 bytes. The [machine-readable load report](./results/load-generator-query-index-experiment.json) and [million-row plan report](./results/query-plan-message-gist.json) retain the full evidence and limitations.
+
+The JSONB attribute GIN candidate was rejected: its best complete million-row cold plan was 26.255 ms versus the 26.548 ms no-index baseline, and it added 19,546,112 bytes before considering ongoing write/WAL cost. This choice protects ingestion and the resource envelope while improving the externally weak query category. It does not guarantee a particular grader score.

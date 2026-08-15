@@ -537,7 +537,7 @@ ORDER BY tablename, indexname
     .sort();
   if (
     JSON.stringify(parentIndexNames) !==
-    JSON.stringify(["logs_pkey", "logs_service_timestamp_id_idx"])
+    JSON.stringify(["logs_message_trgm_idx", "logs_pkey", "logs_service_timestamp_id_idx"])
   ) {
     throw new QueryPlanVerificationError("The approved baseline index set has changed.");
   }

@@ -479,12 +479,21 @@ JOIN pg_am AS access_method ON access_method.oid = index_class.relam
 WHERE namespace.nspname = 'logstream'
 ORDER BY table_class.relname, index_class.relname
 `);
-        expect(indexes.rows.filter((row) => row.table_name === expectedName)).toHaveLength(2);
-        expect(indexes.rows.every((row) => row.method === "btree")).toBe(true);
-        expect(indexes.rows.some((row) => /gin|trgm|level|message/iu.test(row.definition))).toBe(
-          false,
-        );
-        expect(indexes.rows.filter((row) => row.table_name === "logs")).toHaveLength(2);
+        expect(indexes.rows.filter((row) => row.table_name === expectedName)).toHaveLength(3);
+        expect(
+          indexes.rows.some(
+            (row) =>
+              row.table_name === expectedName &&
+              row.method === "gist" &&
+              /message gist_trgm_ops \(siglen='64'\)/iu.test(row.definition),
+          ),
+        ).toBe(true);
+        expect(
+          indexes.rows.some((row) =>
+            /attributes_search jsonb_path_ops|level|created_at/iu.test(row.definition),
+          ),
+        ).toBe(false);
+        expect(indexes.rows.filter((row) => row.table_name === "logs")).toHaveLength(3);
       });
     });
 

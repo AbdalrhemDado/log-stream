@@ -143,3 +143,20 @@ The following remain required later:
 - External sort, temporary blocks, disk usage, or multi-batch hashing would indicate spilling; none appeared here.
 - Parameterization keeps data separate from SQL syntax even in internal diagnostic tooling.
 - An index must justify its ingestion, WAL, storage, cache, and maintenance cost—not merely appear in one favorable plan.
+
+## 2026-08-14 selective-index follow-up
+
+The retained follow-up is [the message GiST report](./results/query-plan-message-gist.json). It used the same seed, one-million-row shape, PostgreSQL image, 1 CPU/1 GiB database controls, six production repository scenarios, restricted runtime role, and cleanup checks as the baseline. Timestamps differ because each disposable run captures a fresh reference time, so this is a controlled comparison rather than a simultaneous A/B test.
+
+| Scenario | Baseline execution | Retained execution | Plan change |
+| --- | ---: | ---: | --- |
+| Literal message search | 107.494 ms | 7.860 ms | parallel sequential scans → bitmap GiST scans |
+| Recent unfiltered page | 0.101 ms | 0.399 ms | ordered B-tree scan retained |
+| Service/time page | 0.278 ms | 0.733 ms | service B-tree scan retained |
+| Level/time page | 0.135 ms | 0.751 ms | ordered time B-tree scan retained |
+| Attribute page | 26.548 ms | 70.768 ms | sequential scans retained; cache-sensitive isolated sample |
+| Primary aggregation | 107.621 ms | 58.874 ms | sequential scan/sort aggregate retained |
+
+The message-search observation improved by 92.69%. The GiST family occupied 120,012,800 bytes, increasing summed index storage from 172,007,424 to 291,553,280 bytes on this synthetic dataset. The 64-byte signature was retained over the default signature because its measured message plan was 7.860 ms rather than 24.389 ms, while the repository-only write rates were effectively similar (43,666 versus 44,001 rows/s). Those repository rates include SQL-side attribute normalization and do not represent HTTP capacity.
+
+A JSONB `jsonb_path_ops` GIN index was tested separately and rejected. With a 256 KiB pending-list limit it completed the million-row review but its attribute plan was 26.255 ms, effectively unchanged from the 26.548 ms baseline while adding 19,546,112 bytes of index storage. The default-pending-list variant was slower on its cold plan, and combining the GIN and message candidates caused PostgreSQL to terminate under the 1 GiB limit. No level index was added because the existing time-ordered scan already stops quickly for the measured low-cardinality level page.

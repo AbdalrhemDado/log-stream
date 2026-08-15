@@ -28,7 +28,7 @@ Treat these as experiments requiring plan evidence:
 
 - `(level, timestamp DESC, id DESC)` because level selectivity is low;
 - GIN `jsonb_path_ops` on `attributes_search`;
-- trigram index on the chosen case-folded message expression.
+- trigram index on the message column.
 
 Add one material index at a time and retain it only when query/aggregation improvement justifies ingestion, WAL, memory, and size cost.
 
@@ -60,4 +60,8 @@ Add one material index at a time and retain it only when query/aggregation impro
 
 ## Acceptance record
 
-The reviewer approved the time/ID and service/time/ID baseline on `2026-08-08`. Level, GIN, and trigram indexes remain measurement-gated experiments and are not accepted as initial indexes.
+The reviewer approved the time/ID and service/time/ID baseline on `2026-08-08`.
+
+On `2026-08-14`, the reviewer authorized the performance work and the message-search experiment retained a partitioned `pg_trgm` GiST index using `gist_trgm_ops(siglen = 64)`. On the controlled one-million-row dataset, the literal mixed-case substring plan changed from parallel sequential scans at 107.494 ms to bitmap GiST scans at 7.860 ms. The GiST family occupied 120,012,800 bytes across parent and leaf catalog entries. A constrained 100,000-row HTTP run then accepted and reconciled every row at 15,017.470 logs/s with 203.859 ms ingestion p95 and 135.681 ms aggregation p95.
+
+The JSONB GIN experiment was rejected. Its small-pending-list variant did not improve the cold attribute plan materially (26.255 ms versus the 26.548 ms baseline), and combining JSONB and message indexes terminated PostgreSQL inside the required 1 GiB limit during the one-million-row review. The level index remains rejected because the existing ordered time scan served the measured level page in under one millisecond. These are controlled observations, not a guarantee of external benchmark results.

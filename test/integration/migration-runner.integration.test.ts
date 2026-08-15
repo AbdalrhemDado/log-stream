@@ -107,7 +107,7 @@ describe.skipIf(!hasPostgresEnvironment)("migration runner with PostgreSQL", () 
     const expected = await loadMigrations(migrationsDirectory);
     const ownerUrl = databaseUrl(ownerBaseUrl ?? "", databaseName);
 
-    expect(result).toEqual({ appliedVersions: [1, 2, 3] });
+    expect(result).toEqual({ appliedVersions: [1, 2, 3, 4] });
     await withClient(ownerUrl, async (owner) => {
       const history = await owner.query<{
         version: number;
@@ -117,7 +117,7 @@ describe.skipIf(!hasPostgresEnvironment)("migration runner with PostgreSQL", () 
       }>(
         "SELECT version, filename, checksum, applied_at FROM logstream_migrations.schema_migrations",
       );
-      expect(history.rows).toHaveLength(3);
+      expect(history.rows).toHaveLength(4);
       expect(
         history.rows.map(({ version, filename, checksum }) => ({ version, filename, checksum })),
       ).toEqual(
@@ -236,7 +236,7 @@ ORDER BY signature
     });
   });
 
-  it("adds no unrelated table, extension, or parent index family in migration 0003", async () => {
+  it("adds only the approved message-search index family and pg_trgm extension", async () => {
     await applyProductionMigrations();
     await withClient(databaseUrl(adminBaseUrl ?? "", databaseName), async (admin) => {
       const relations = await admin.query<{ name: string; kind: string }>(`
@@ -249,15 +249,17 @@ ORDER BY class.relname
       expect(relations.rows.map((row) => row.name)).toEqual([
         "logs",
         "logs_default",
+        "logs_default_message_idx",
         "logs_default_pkey",
         "logs_default_service_timestamp_id_idx",
+        "logs_message_trgm_idx",
         "logs_pkey",
         "logs_service_timestamp_id_idx",
       ]);
       const extensions = await admin.query<{ name: string }>(
         "SELECT extname AS name FROM pg_extension ORDER BY extname",
       );
-      expect(extensions.rows).toEqual([{ name: "plpgsql" }]);
+      expect(extensions.rows).toEqual([{ name: "pg_trgm" }, { name: "plpgsql" }]);
     });
   });
 
@@ -385,7 +387,7 @@ SELECT
 
       await blocker.query("SELECT pg_advisory_unlock($1, $2)", [1_815_642_963, 1]);
       lockReleased = true;
-      await expect(operation).resolves.toEqual({ appliedVersions: [1, 2, 3] });
+      await expect(operation).resolves.toEqual({ appliedVersions: [1, 2, 3, 4] });
     } finally {
       if (!lockReleased) {
         await blocker.query("SELECT pg_advisory_unlock($1, $2)", [1_815_642_963, 1]);
@@ -405,12 +407,12 @@ SELECT
       runMigrationsWithOwner({ connection: second, loadMigrations: load }),
     ]);
 
-    expect(results.map((result) => result.appliedVersions).toSorted()).toEqual([[], [1, 2, 3]]);
+    expect(results.map((result) => result.appliedVersions).toSorted()).toEqual([[], [1, 2, 3, 4]]);
     await withClient(ownerUrl, async (owner) => {
       const history = await owner.query<{ count: number }>(
         "SELECT COUNT(*)::integer AS count FROM logstream_migrations.schema_migrations",
       );
-      expect(history.rows).toEqual([{ count: 3 }]);
+      expect(history.rows).toEqual([{ count: 4 }]);
     });
   });
 });

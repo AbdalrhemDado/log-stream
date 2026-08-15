@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { InternalDatabaseError } from "../../src/database/database-errors.js";
-import { normalizeAttributes } from "../../src/domain/attribute-normalizer.js";
 import { validateLogEntry } from "../../src/domain/log-entry-validator.js";
 import type { LogId, LogInsertionRecord } from "../../src/domain/log-entry.js";
 import {
@@ -40,7 +39,6 @@ function insertionRecord(
   return {
     ...result.value,
     id: id as LogId,
-    attributesSearch: normalizeAttributes(result.value.attributes),
   };
 }
 
@@ -88,7 +86,7 @@ describe("ingestion repository", () => {
     expect(insertSql).not.toContain("RETURNING");
   });
 
-  it("builds seven same-length parallel arrays in record and column order", async () => {
+  it("builds six same-length parallel arrays and normalizes search JSONB in SQL", async () => {
     const database = databaseDouble();
     const repository = createIngestionRepository(database.pool);
     const records = [
@@ -118,8 +116,10 @@ describe("ingestion repository", () => {
     expect(sql).toContain("$1::timestamptz[]");
     expect(sql).toContain("$2::uuid[]");
     expect(sql.match(/::text\[\]/gu)).toHaveLength(3);
-    expect(sql.match(/::jsonb\[\]/gu)).toHaveLength(2);
-    expect(parameters).toHaveLength(7);
+    expect(sql.match(/::jsonb\[\]/gu)).toHaveLength(1);
+    expect(sql).toContain("jsonb_each(batch.attributes)");
+    expect(sql).toContain("jsonb_object_agg");
+    expect(parameters).toHaveLength(6);
     expect(
       parameters.every((parameter) => Array.isArray(parameter) && parameter.length === 2),
     ).toBe(true);
@@ -130,7 +130,6 @@ describe("ingestion repository", () => {
       ["checkout", "billing"],
       ["first", "second"],
       ['{"retries":3,"enabled":true}', '{"region":"eu-west"}'],
-      ['{"retries":"3","enabled":"true"}', '{"region":"eu-west"}'],
     ]);
   });
 

@@ -125,7 +125,6 @@ describe("createIngestionService", () => {
       service: "checkout",
       message: "payment accepted",
       attributes: { text: "42", count: 42, enabled: true, disabled: false },
-      attributesSearch: { text: "42", count: "42", enabled: "true", disabled: "false" },
     });
   });
 
@@ -238,7 +237,6 @@ describe("createIngestionService", () => {
 
     const record = calls[0]?.[0];
     expect(Object.getPrototypeOf(record?.attributes)).toBeNull();
-    expect(Object.getPrototypeOf(record?.attributesSearch)).toBeNull();
     expect(record?.attributes[""]).toBe("empty");
     expect(record?.attributes["שלום"]).toBe("unicode");
     expect(record?.attributes["__proto__"]).toBe("prototype");

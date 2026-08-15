@@ -324,11 +324,6 @@ function buildInsertionRecords(
   return entries.map((entry, index) => ({
     ...entry,
     id: createDeterministicLogId(seed, idOffset + index),
-    attributesSearch:
-      normalized[index] ??
-      (() => {
-        throw new BenchmarkVerificationError("Normalized attributes are missing.");
-      })(),
   }));
 }
 

@@ -26,16 +26,21 @@ SELECT
   batch.service,
   batch.message,
   batch.attributes,
-  batch.attributes_search
+  COALESCE(
+    (
+      SELECT jsonb_object_agg(attribute.key, to_jsonb(attribute.value #>> '{}'))
+      FROM jsonb_each(batch.attributes) AS attribute(key, value)
+    ),
+    '{}'::jsonb
+  )
 FROM UNNEST(
   $1::timestamptz[],
   $2::uuid[],
   $3::text[],
   $4::text[],
   $5::text[],
-  $6::jsonb[],
-  $7::jsonb[]
-) AS batch(timestamp, id, level, service, message, attributes, attributes_search)
+  $6::jsonb[]
+) AS batch(timestamp, id, level, service, message, attributes)
 `;
 
 function serializeJsonb(value: object): string {
@@ -49,7 +54,6 @@ function buildInsertParameters(records: readonly LogInsertionRecord[]): unknown[
   const services = new Array<string>(records.length);
   const messages = new Array<string>(records.length);
   const attributes = new Array<string>(records.length);
-  const attributesSearch = new Array<string>(records.length);
 
   for (const [index, record] of records.entries()) {
     timestamps[index] = record.timestamp;
@@ -58,10 +62,9 @@ function buildInsertParameters(records: readonly LogInsertionRecord[]): unknown[
     services[index] = record.service;
     messages[index] = record.message;
     attributes[index] = serializeJsonb(record.attributes);
-    attributesSearch[index] = serializeJsonb(record.attributesSearch);
   }
 
-  return [timestamps, ids, levels, services, messages, attributes, attributesSearch];
+  return [timestamps, ids, levels, services, messages, attributes];
 }
 
 export function createIngestionRepository(pool: IngestionDatabasePool): IngestionRepository {

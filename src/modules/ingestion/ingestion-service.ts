@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import { normalizeAttributes } from "../../domain/attribute-normalizer.js";
 import type {
   IngestionResponse,
   RejectionItem,
@@ -72,7 +71,6 @@ export function createIngestionService(
         records.push({
           ...result.value,
           id: generateId(),
-          attributesSearch: normalizeAttributes(result.value.attributes),
         });
       }
 

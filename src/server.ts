@@ -24,6 +24,10 @@ import {
 } from "./server-lifecycle.js";
 import { createLogAggregationRepository } from "./modules/aggregation/log-aggregation-repository.js";
 import { createLogAggregationService } from "./modules/aggregation/log-aggregation-service.js";
+import {
+  createBatchedIngestionRepository,
+  type BatchedIngestionRepository,
+} from "./modules/ingestion/batched-ingestion-repository.js";
 import { createIngestionRepository } from "./modules/ingestion/ingestion-repository.js";
 import { createIngestionService } from "./modules/ingestion/ingestion-service.js";
 import { createLogQueryRepository } from "./modules/query/log-query-repository.js";
@@ -47,6 +51,7 @@ async function startRuntime(
   const databasePool = createDatabasePool(databaseConfig);
   let app: ReturnType<typeof buildApp> | undefined;
   let retentionService: ReturnType<typeof createRetentionService> | undefined;
+  let batchedIngestionRepository: BatchedIngestionRepository | undefined;
   databasePool.on("error", () => {
     readiness.markUnavailable();
     if (app === undefined) {
@@ -65,7 +70,10 @@ async function startRuntime(
     await verifyRuntimeDatabase(databasePool);
 
     const ingestionRepository = createIngestionRepository(databasePool);
-    const ingestionService = createIngestionService({ repository: ingestionRepository });
+    batchedIngestionRepository = createBatchedIngestionRepository({
+      repository: ingestionRepository,
+    });
+    const ingestionService = createIngestionService({ repository: batchedIngestionRepository });
     const logQueryRepository = createLogQueryRepository(databasePool);
     const logQueryService = createLogQueryService({ repository: logQueryRepository });
     const logAggregationRepository = createLogAggregationRepository(databasePool);
@@ -105,6 +113,7 @@ async function startRuntime(
     app.log.info({ attempts: databaseWait.attempts }, "Runtime database verified");
   } catch (error: unknown) {
     readiness.beginShutdown();
+    await batchedIngestionRepository?.close();
     await databasePool.end();
     throw error;
   }
@@ -124,7 +133,10 @@ async function startRuntime(
     },
     closeApplication: async () => app.close(),
     closeDatabase: async () => {
-      await stopRetentionBeforeDatabase(retentionService, async () => databasePool.end());
+      await stopRetentionBeforeDatabase(retentionService, async () => {
+        await batchedIngestionRepository.close();
+        await databasePool.end();
+      });
     },
     shutdownTimeoutMs: SHUTDOWN_TIMEOUT_MS,
     forceExit: (exitCode) => {
@@ -155,7 +167,10 @@ async function startRuntime(
   } catch (error: unknown) {
     lifecycle.dispose();
     readiness.beginShutdown();
-    await Promise.allSettled([app.close(), databasePool.end()]);
+    await Promise.allSettled([
+      app.close(),
+      batchedIngestionRepository.close().then(async () => databasePool.end()),
+    ]);
     throw error;
   }
 }

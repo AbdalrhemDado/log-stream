@@ -52,7 +52,7 @@ The code is organized around routes, services, repositories, domain validation, 
 
 ### Request and data flow
 
-- Ingestion validates every element independently, generates UUID v4 identifiers for accepted rows, builds a normalized attribute-search document, and inserts the accepted portion with one typed-array PostgreSQL `UNNEST` statement. PostgreSQL executes that statement as an implicit transaction, and the HTTP response is sent only after it commits.
+- Ingestion validates every element independently, generates UUID v4 identifiers for accepted rows, and submits accepted requests through an adaptive batching coordinator. PostgreSQL derives the normalized attribute-search document from the original typed JSONB inside the parameterized `UNNEST` statement. PostgreSQL executes each statement as an implicit transaction, and every participating HTTP response is sent only after the shared statement commits.
 - Query builds one parameterized predicate, orders by `timestamp DESC, id DESC`, requests `limit + 1` rows, and returns an opaque cursor when another page exists.
 - Aggregation uses the same filters, PostgreSQL `date_bin` with a fixed Unix-epoch origin, and an allowlisted bucket and grouping expression. Results are ordered by bucket and group.
 - Retention runs independently on an interval. An advisory lock prevents duplicate coordinators; expired whole partitions are dropped one at a time and expired default-partition rows are deleted in bounded, skip-locked batches.
@@ -211,7 +211,7 @@ Response:
 | `attributes_search`   | normalized string-valued JSONB used by attribute filters |
 | `created_at`          | server insertion time                                    |
 
-The primary key is `(timestamp, id)`. The only additional index family is `(service, timestamp DESC, id DESC)`. Both propagate to leaf partitions. This small inventory keeps ingestion write amplification controlled while supporting global chronological pages and service-scoped pages. No GIN or message-search index is retained: attribute containment and literal substring filters may scan the pruned partitions, which is an explicit tradeoff until measurements justify another write-costly index.
+The primary key is `(timestamp, id)`. Additional index families are `(service, timestamp DESC, id DESC)` and a `pg_trgm` GiST index on `message` with a 64-byte signature. All propagate to leaf partitions. The trigram index is retained because a constrained one-million-row experiment reduced the literal substring plan from 107.494 ms to 7.860 ms while a constrained HTTP run still reached 15,017.470 accepted logs/s. No level or JSONB GIN index is retained: the level page already uses the ordered time index efficiently, while the JSONB candidate did not provide a repeatable benefit commensurate with its write, storage, and memory cost.
 
 Daily UTC partitions are created for the retention window plus two future days. The default partition safely accepts old or otherwise uncovered event times; partition maintenance atomically moves overlapping default rows before attaching a new day. Default retention is 30 days, checked every 60 minutes. Fully expired daily partitions are dropped, while expired rows in the default partition are deleted in bounded batches. Retention is based on event timestamp, so accepted late data can be removed on the next cycle.
 
