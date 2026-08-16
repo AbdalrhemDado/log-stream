@@ -5,6 +5,7 @@ import type {
   RejectionItem,
   UntrustedIngestionBody,
 } from "../../domain/ingestion.js";
+import { normalizeAttributes } from "../../domain/attribute-normalizer.js";
 import { validateLogEntry } from "../../domain/log-entry-validator.js";
 import type { LogId, LogInsertionRecord } from "../../domain/log-entry.js";
 import { BadRequestError } from "../../shared/app-error.js";
@@ -71,6 +72,7 @@ export function createIngestionService(
         records.push({
           ...result.value,
           id: generateId(),
+          attributesSearch: normalizeAttributes(result.value.attributes),
         });
       }
 

@@ -86,7 +86,7 @@ describe("ingestion repository", () => {
     expect(insertSql).not.toContain("RETURNING");
   });
 
-  it("builds six same-length parallel arrays and normalizes search JSONB in SQL", async () => {
+  it("builds seven same-length parallel arrays and binds search JSONB directly", async () => {
     const database = databaseDouble();
     const repository = createIngestionRepository(database.pool);
     const records = [
@@ -116,10 +116,8 @@ describe("ingestion repository", () => {
     expect(sql).toContain("$1::timestamptz[]");
     expect(sql).toContain("$2::uuid[]");
     expect(sql.match(/::text\[\]/gu)).toHaveLength(3);
-    expect(sql.match(/::jsonb\[\]/gu)).toHaveLength(1);
-    expect(sql).toContain("jsonb_each(batch.attributes)");
-    expect(sql).toContain("jsonb_object_agg");
-    expect(parameters).toHaveLength(6);
+    expect(sql.match(/::jsonb\[\]/gu)).toHaveLength(2);
+    expect(parameters).toHaveLength(7);
     expect(
       parameters.every((parameter) => Array.isArray(parameter) && parameter.length === 2),
     ).toBe(true);
@@ -130,6 +128,7 @@ describe("ingestion repository", () => {
       ["checkout", "billing"],
       ["first", "second"],
       ['{"retries":3,"enabled":true}', '{"region":"eu-west"}'],
+      ['{"retries":"3","enabled":"true"}', '{"region":"eu-west"}'],
     ]);
   });
 

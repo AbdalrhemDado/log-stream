@@ -36,6 +36,7 @@ export interface LogInsertionRecord {
   readonly service: string;
   readonly message: string;
   readonly attributes: OriginalAttributes;
+  readonly attributesSearch?: NormalizedSearchAttributes;
 }
 
 export interface ApiLogResponseItem {

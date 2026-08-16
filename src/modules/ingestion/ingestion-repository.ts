@@ -1,4 +1,5 @@
 import { translateDatabaseError } from "../../database/database-errors.js";
+import { normalizeAttributes } from "../../domain/attribute-normalizer.js";
 import type { LogInsertionRecord } from "../../domain/log-entry.js";
 
 export interface IngestionDatabasePool {
@@ -26,21 +27,16 @@ SELECT
   batch.service,
   batch.message,
   batch.attributes,
-  COALESCE(
-    (
-      SELECT jsonb_object_agg(attribute.key, to_jsonb(attribute.value #>> '{}'))
-      FROM jsonb_each(batch.attributes) AS attribute(key, value)
-    ),
-    '{}'::jsonb
-  )
+  batch.attributes_search
 FROM UNNEST(
   $1::timestamptz[],
   $2::uuid[],
   $3::text[],
   $4::text[],
   $5::text[],
-  $6::jsonb[]
-) AS batch(timestamp, id, level, service, message, attributes)
+  $6::jsonb[],
+  $7::jsonb[]
+) AS batch(timestamp, id, level, service, message, attributes, attributes_search)
 `;
 
 function serializeJsonb(value: object): string {
@@ -48,23 +44,32 @@ function serializeJsonb(value: object): string {
 }
 
 function buildInsertParameters(records: readonly LogInsertionRecord[]): unknown[] {
-  const timestamps = new Array<LogInsertionRecord["timestamp"]>(records.length);
-  const ids = new Array<LogInsertionRecord["id"]>(records.length);
-  const levels = new Array<LogInsertionRecord["level"]>(records.length);
-  const services = new Array<string>(records.length);
-  const messages = new Array<string>(records.length);
-  const attributes = new Array<string>(records.length);
+  const count = records.length;
+  const timestamps = new Array<LogInsertionRecord["timestamp"]>(count);
+  const ids = new Array<LogInsertionRecord["id"]>(count);
+  const levels = new Array<LogInsertionRecord["level"]>(count);
+  const services = new Array<string>(count);
+  const messages = new Array<string>(count);
+  const attributes = new Array<string>(count);
+  const attributesSearch = new Array<string>(count);
 
-  for (const [index, record] of records.entries()) {
+  for (let index = 0; index < count; index += 1) {
+    const record = records[index];
+    if (record === undefined) {
+      continue;
+    }
     timestamps[index] = record.timestamp;
     ids[index] = record.id;
     levels[index] = record.level;
     services[index] = record.service;
     messages[index] = record.message;
     attributes[index] = serializeJsonb(record.attributes);
+    attributesSearch[index] = serializeJsonb(
+      record.attributesSearch ?? normalizeAttributes(record.attributes),
+    );
   }
 
-  return [timestamps, ids, levels, services, messages, attributes];
+  return [timestamps, ids, levels, services, messages, attributes, attributesSearch];
 }
 
 export function createIngestionRepository(pool: IngestionDatabasePool): IngestionRepository {

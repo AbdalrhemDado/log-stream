@@ -3,9 +3,9 @@ import { TransientServiceError } from "../../shared/app-error.js";
 import type { IngestionRepository } from "./ingestion-repository.js";
 
 const DEFAULT_FLUSH_DELAY_MS = 2;
-const DEFAULT_MAX_BATCH_ROWS = 1_000;
-const DEFAULT_MAX_QUEUED_ROWS = 50_000;
-const DEFAULT_MAX_CONCURRENT_WRITES = 3;
+const DEFAULT_MAX_BATCH_ROWS = 2_500;
+const DEFAULT_MAX_QUEUED_ROWS = 150_000;
+const DEFAULT_MAX_CONCURRENT_WRITES = 4;
 
 interface PendingWrite {
   readonly records: readonly LogInsertionRecord[];
