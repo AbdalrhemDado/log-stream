@@ -82,11 +82,11 @@ describe("ingestion repository", () => {
 
     expect(query).toHaveBeenCalledOnce();
     const insertSql = String(query.mock.calls[0]?.[0]);
-    expect(insertSql.match(/\bUNNEST\b/gu)).toHaveLength(1);
+    expect(insertSql.match(/\bUNNEST\b/gu)).toHaveLength(2);
     expect(insertSql).not.toContain("RETURNING");
   });
 
-  it("builds seven same-length parallel arrays and binds search JSONB directly", async () => {
+  it("builds parallel arrays for logs and minute aggregates", async () => {
     const database = databaseDouble();
     const repository = createIngestionRepository(database.pool);
     const records = [
@@ -115,13 +115,10 @@ describe("ingestion repository", () => {
     const [sql, parameters] = insertCall;
     expect(sql).toContain("$1::timestamptz[]");
     expect(sql).toContain("$2::uuid[]");
-    expect(sql.match(/::text\[\]/gu)).toHaveLength(3);
+    expect(sql.match(/::text\[\]/gu)).toHaveLength(5);
     expect(sql.match(/::jsonb\[\]/gu)).toHaveLength(2);
-    expect(parameters).toHaveLength(7);
-    expect(
-      parameters.every((parameter) => Array.isArray(parameter) && parameter.length === 2),
-    ).toBe(true);
-    expect(parameters).toEqual([
+    expect(parameters).toHaveLength(11);
+    expect(parameters.slice(0, 7)).toEqual([
       ["2026-08-08T10:00:00.000Z", "2026-08-08T11:00:00.000Z"],
       ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"],
       ["warn", "error"],
@@ -129,6 +126,12 @@ describe("ingestion repository", () => {
       ["first", "second"],
       ['{"retries":3,"enabled":true}', '{"region":"eu-west"}'],
       ['{"retries":"3","enabled":"true"}', '{"region":"eu-west"}'],
+    ]);
+    expect(parameters.slice(7)).toEqual([
+      ["2026-08-08T10:00:00.000Z", "2026-08-08T11:00:00.000Z"],
+      ["checkout", "billing"],
+      ["warn", "error"],
+      [1, 1],
     ]);
   });
 
