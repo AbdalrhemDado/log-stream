@@ -247,12 +247,17 @@ WHERE namespace.nspname = 'logstream'
 ORDER BY class.relname
 `);
       expect(relations.rows.map((row) => row.name)).toEqual([
+        "log_minute_aggregates",
+        "log_minute_aggregates_bucket_start_idx",
+        "log_minute_aggregates_level_bucket_start_idx",
+        "log_minute_aggregates_pkey",
+        "log_minute_aggregates_service_bucket_start_idx",
         "logs",
         "logs_default",
-        "logs_default_message_idx",
+        "logs_default_level_timestamp_id_idx",
         "logs_default_pkey",
         "logs_default_service_timestamp_id_idx",
-        "logs_message_trgm_idx",
+        "logs_level_timestamp_id_idx",
         "logs_pkey",
         "logs_service_timestamp_id_idx",
       ]);
@@ -387,7 +392,7 @@ SELECT
 
       await blocker.query("SELECT pg_advisory_unlock($1, $2)", [1_815_642_963, 1]);
       lockReleased = true;
-      await expect(operation).resolves.toEqual({ appliedVersions: [1, 2, 3, 4] });
+      await expect(operation).resolves.toEqual({ appliedVersions: [1, 2, 3, 4, 5, 6, 7] });
     } finally {
       if (!lockReleased) {
         await blocker.query("SELECT pg_advisory_unlock($1, $2)", [1_815_642_963, 1]);
@@ -407,12 +412,15 @@ SELECT
       runMigrationsWithOwner({ connection: second, loadMigrations: load }),
     ]);
 
-    expect(results.map((result) => result.appliedVersions).toSorted()).toEqual([[], [1, 2, 3, 4]]);
+    expect(results.map((result) => result.appliedVersions).toSorted()).toEqual([
+      [],
+      [1, 2, 3, 4, 5, 6, 7],
+    ]);
     await withClient(ownerUrl, async (owner) => {
       const history = await owner.query<{ count: number }>(
         "SELECT COUNT(*)::integer AS count FROM logstream_migrations.schema_migrations",
       );
-      expect(history.rows).toEqual([{ count: 4 }]);
+      expect(history.rows).toEqual([{ count: 7 }]);
     });
   });
 });

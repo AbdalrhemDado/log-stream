@@ -1227,7 +1227,9 @@ SELECT
     const submitted = "submitted-secret-service";
 
     await withClient(ownerUrl, async (owner) => {
-      await owner.query("REVOKE SELECT ON TABLE logstream.logs FROM logstream_runtime");
+      await owner.query(
+        "REVOKE SELECT ON TABLE logstream.logs, logstream.log_minute_aggregates FROM logstream_runtime",
+      );
     });
     let response;
     try {
@@ -1237,7 +1239,9 @@ SELECT
       });
     } finally {
       await withClient(ownerUrl, async (owner) => {
-        await owner.query("GRANT SELECT ON TABLE logstream.logs TO logstream_runtime");
+        await owner.query(
+          "GRANT SELECT ON TABLE logstream.logs, logstream.log_minute_aggregates TO logstream_runtime",
+        );
       });
     }
 

@@ -484,15 +484,18 @@ ORDER BY table_class.relname, index_class.relname
           indexes.rows.some(
             (row) =>
               row.table_name === expectedName &&
-              row.method === "gist" &&
-              /message gist_trgm_ops \(siglen='64'\)/iu.test(row.definition),
+              row.method === "btree" &&
+              /service/iu.test(row.definition),
           ),
         ).toBe(true);
         expect(
-          indexes.rows.some((row) =>
-            /attributes_search jsonb_path_ops|level|created_at/iu.test(row.definition),
+          indexes.rows.some(
+            (row) =>
+              row.table_name === expectedName &&
+              row.method === "btree" &&
+              /level/iu.test(row.definition),
           ),
-        ).toBe(false);
+        ).toBe(true);
         expect(indexes.rows.filter((row) => row.table_name === "logs")).toHaveLength(3);
       });
     });
