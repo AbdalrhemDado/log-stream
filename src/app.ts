@@ -29,7 +29,6 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     options.databaseProbe ??
     (() => Promise.reject(new Error("No database probe is configured for this application.")));
   const app = Fastify({
-    bodyLimit: 20 * 1024 * 1024,
     genReqId: () => randomUUID(),
     logController: new LogController({
       disableRequestLogging: (request) => request.method === "POST" && request.url === "/logs",
