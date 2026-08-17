@@ -11,7 +11,7 @@ services:
       DATABASE_URL: postgresql://logstream_runtime:local_runtime_password@postgres:5432/logstream
       MIGRATION_DATABASE_URL: postgresql://logstream_owner:local_owner_password@postgres:5432/logstream
       DB_CONNECTION_TIMEOUT_MS: "2000"
-      DB_POOL_MAX: "10"
+      DB_POOL_MAX: "20"
       DB_QUERY_TIMEOUT_MS: "10000"
       DB_RETRY_DELAY_MS: "500"
       DB_STARTUP_TIMEOUT_MS: "30000"
@@ -49,7 +49,8 @@ services:
       -c effective_cache_size=768MB
       -c synchronous_commit=off
       -c wal_buffers=16MB
-      -c checkpoint_timeout=15min
+      -c wal_compression=zstd
+      -c checkpoint_timeout=30min
       -c checkpoint_completion_target=0.9
       -c max_wal_size=2GB
       -c random_page_cost=1.1

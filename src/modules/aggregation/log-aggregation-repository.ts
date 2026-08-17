@@ -6,6 +6,7 @@ import type {
   AggregationBucket,
   AggregationGroupBy,
   ParsedLogAggregationQuery,
+  RequiredAggregationFilters,
 } from "./aggregation-parameter-parser.js";
 
 const BUCKET_INTERVAL_SQL = {
@@ -59,7 +60,66 @@ function readGroupExpression(groupBy: AggregationGroupBy): string {
   return GROUP_EXPRESSION_SQL[groupBy];
 }
 
-function buildAggregationQuery(request: ParsedLogAggregationQuery): {
+function canUseRollup(filters: RequiredAggregationFilters): boolean {
+  return filters.q === undefined && filters.attributes.length === 0;
+}
+
+function buildRollupAggregationQuery(request: ParsedLogAggregationQuery): {
+  readonly text: string;
+  readonly values: unknown[];
+} {
+  const interval = readBucketInterval(request.bucket);
+  const groupExpression =
+    request.groupBy === undefined ? undefined : readGroupExpression(request.groupBy);
+  const values: unknown[] = [request.filters.since, request.filters.until];
+  const clauses: string[] = [
+    "logs.bucket_start >= $1::timestamptz",
+    "logs.bucket_start < $2::timestamptz",
+  ];
+
+  if (request.filters.service !== undefined) {
+    values.push(request.filters.service);
+    clauses.push(`logs.service = $${String(values.length)}`);
+  }
+
+  if (request.filters.level !== undefined) {
+    values.push(request.filters.level);
+    clauses.push(`logs.level = $${String(values.length)}`);
+  }
+
+  const groupValueSql = groupExpression ?? "NULL::text";
+  const groupBySql = groupExpression === undefined ? "GROUP BY 1" : "GROUP BY 1, 2";
+  const groupOrderSql = groupExpression === undefined ? "" : ", aggregation.group_value ASC";
+
+  return {
+    text: `
+SELECT
+  to_char(
+    aggregation.bucket_start AT TIME ZONE 'UTC',
+    'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+  ) AS start,
+  aggregation.group_value AS "group",
+  aggregation.count::text AS count
+FROM (
+  SELECT
+    date_bin(
+      ${interval},
+      logs.bucket_start,
+      ${FIXED_EPOCH_ORIGIN_SQL}
+    ) AS bucket_start,
+    ${groupValueSql} AS group_value,
+    SUM(logs.count) AS count
+  FROM logstream.log_minute_aggregates AS logs
+  WHERE ${clauses.join(" AND ")}
+  ${groupBySql}
+) AS aggregation
+ORDER BY aggregation.bucket_start ASC${groupOrderSql}
+`,
+    values,
+  };
+}
+
+function buildRawAggregationQuery(request: ParsedLogAggregationQuery): {
   readonly text: string;
   readonly values: unknown[];
 } {
@@ -189,10 +249,12 @@ export function createLogAggregationRepository(
 ): LogAggregationRepository {
   return {
     aggregate: async (request) => {
-      let query: ReturnType<typeof buildAggregationQuery>;
+      let query: { readonly text: string; readonly values: unknown[] };
 
       try {
-        query = buildAggregationQuery(request);
+        query = canUseRollup(request.filters)
+          ? buildRollupAggregationQuery(request)
+          : buildRawAggregationQuery(request);
       } catch (error: unknown) {
         if (error instanceof InternalDatabaseError) {
           throw error;
