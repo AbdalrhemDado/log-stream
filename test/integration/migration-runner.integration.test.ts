@@ -107,7 +107,7 @@ describe.skipIf(!hasPostgresEnvironment)("migration runner with PostgreSQL", () 
     const expected = await loadMigrations(migrationsDirectory);
     const ownerUrl = databaseUrl(ownerBaseUrl ?? "", databaseName);
 
-    expect(result).toEqual({ appliedVersions: [1, 2, 3, 4] });
+    expect(result).toEqual({ appliedVersions: expected.map((migration) => migration.version) });
     await withClient(ownerUrl, async (owner) => {
       const history = await owner.query<{
         version: number;
@@ -117,7 +117,7 @@ describe.skipIf(!hasPostgresEnvironment)("migration runner with PostgreSQL", () 
       }>(
         "SELECT version, filename, checksum, applied_at FROM logstream_migrations.schema_migrations",
       );
-      expect(history.rows).toHaveLength(4);
+      expect(history.rows).toHaveLength(expected.length);
       expect(
         history.rows.map(({ version, filename, checksum }) => ({ version, filename, checksum })),
       ).toEqual(

@@ -223,6 +223,16 @@ VALUES ($1::timestamptz, $2::uuid, $3::text, $4::text, $5::text, $6::jsonb, $7::
           JSON.stringify(fixture.attributesSearch),
         ],
       );
+
+      await owner.query(
+        `
+INSERT INTO logstream.log_minute_aggregates (bucket_start, service, level, count)
+VALUES (date_trunc('minute', $1::timestamptz), $2::text, $3::text, 1)
+ON CONFLICT (bucket_start, service, level)
+DO UPDATE SET count = logstream.log_minute_aggregates.count + 1
+`,
+        [fixture.timestamp, fixture.service, fixture.level],
+      );
     }
   });
 }

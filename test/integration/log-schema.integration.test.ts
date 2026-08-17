@@ -303,7 +303,7 @@ WHERE schemaname = 'logstream' AND tablename = 'logs'
 ORDER BY indexname
 `);
       expect(indexes.rows.map((row) => row.indexname)).toEqual([
-        "logs_message_trgm_idx",
+        "logs_level_timestamp_id_idx",
         "logs_pkey",
         "logs_service_timestamp_id_idx",
       ]);
@@ -312,29 +312,11 @@ ORDER BY indexname
           .find((row) => row.indexname === "logs_service_timestamp_id_idx")
           ?.indexdef.replaceAll('"', ""),
       ).toContain("(service, timestamp DESC, id DESC)");
-
-      const allIndexes = await owner.query<{ access_method: string; definition: string }>(`
-SELECT access_method.amname AS access_method, pg_get_indexdef(index_class.oid) AS definition
-FROM pg_index AS index_metadata
-JOIN pg_class AS index_class ON index_class.oid = index_metadata.indexrelid
-JOIN pg_class AS table_class ON table_class.oid = index_metadata.indrelid
-JOIN pg_namespace AS namespace ON namespace.oid = table_class.relnamespace
-JOIN pg_am AS access_method ON access_method.oid = index_class.relam
-WHERE namespace.nspname = 'logstream'
-  AND (table_class.relname = 'logs' OR table_class.relname LIKE 'logs\\_%' ESCAPE '\\')
-`);
       expect(
-        allIndexes.rows.some(
-          (index) =>
-            index.access_method === "gist" &&
-            /message gist_trgm_ops \(siglen='64'\)/iu.test(index.definition),
-        ),
-      ).toBe(true);
-      expect(
-        allIndexes.rows.some((index) =>
-          /attributes_search jsonb_path_ops|level|created_at/iu.test(index.definition),
-        ),
-      ).toBe(false);
+        indexes.rows
+          .find((row) => row.indexname === "logs_level_timestamp_id_idx")
+          ?.indexdef.replaceAll('"', ""),
+      ).toContain("(level, timestamp DESC, id DESC)");
     });
   });
 
